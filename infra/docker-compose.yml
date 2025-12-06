@@ -1,0 +1,46 @@
+version: "3.9"
+services:
+  tenant-auth-service:
+    build: ../services/tenant-auth-service
+    container_name: tenant-auth-service
+    ports:
+      - "7001:80"
+  menu-service:
+    build: ../services/menu-service
+    container_name: menu-service
+    ports:
+      - "7002:80"
+  order-payment-service:
+    build: ../services/order-payment-service
+    container_name: order-payment-service
+    ports:
+      - "7003:80"
+  customer-reservation-service:
+    build: ../services/customer-reservation-service
+    container_name: customer-reservation-service
+    ports:
+      - "7004:80"
+  ai-service:
+    build: ../services/ai-service
+    container_name: ai-service
+    ports:
+      - "7005:5000"
+  admin-web:
+    build: ../clients/admin-web
+    container_name: admin-web
+    ports:
+      - "3001:3000"
+  restaurant-management-web:
+    build: ../clients/restaurant-management-web
+    ports:
+      - "3002:3000"
+  guest-web:
+    build: ../clients/guest-web
+    ports:
+      - "3003:3000"
+  customer-mobile:
+    build: ../clients/customer-mobile-app
+    ports:
+      - "3004:3000"
+env_file:
+  - ../infra/.env

@@ -1,0 +1,13 @@
+{
+  "name": "customer-mobile-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "expo start"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-native": "0.72.4",
+    "expo": "~48.0.0"
+  }
+}
