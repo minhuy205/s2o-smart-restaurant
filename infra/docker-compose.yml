@@ -1,5 +1,21 @@
 version: "3.9"
 services:
+# 1. THÊM SERVICE POSTGRES VÀO ĐẦU DANH SÁCH
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    env_file:
+      - .env
+# 2. CẬP NHẬT SERVICE KHÁC ĐỂ KẾT NỐI ĐẾN POSTGRES
   tenant-auth-service:
     build: ../services/tenant-auth-service
     container_name: tenant-auth-service
@@ -9,12 +25,20 @@ services:
     build: ../services/menu-service
     container_name: menu-service
     ports:
-      - "7002:80"
+      - "7002:8080"
+    depends_on:      # <-- Thêm dòng này: Đợi DB chạy xong mới chạy Service
+      - postgres
+    env_file:        # <--- THÊM DÒNG NÀY
+      - .env         # <--- THÊM DÒNG NÀY (Trỏ vào file .env trong cùng thư mục infra)
   order-payment-service:
     build: ../services/order-payment-service
     container_name: order-payment-service
     ports:
-      - "7003:80"
+      - "7003:8080"
+    depends_on:            # <--- THÊM dependency
+      - postgres
+    env_file:
+      - .env
   customer-reservation-service:
     build: ../services/customer-reservation-service
     container_name: customer-reservation-service
@@ -42,5 +66,8 @@ services:
     build: ../clients/customer-mobile-app
     ports:
       - "3004:3000"
-env_file:
-  - ../infra/.env
+# env_file:
+#   - ../infra/.env
+volumes:
+  postgres_data:
+  # nên sửa 80 thành 8080 cho đồng bộ với các service khác
