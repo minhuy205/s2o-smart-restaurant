@@ -1,23 +1,16 @@
-// var builder = WebApplication.CreateBuilder(args);
-// var app = builder.Build();
-// app.MapGet("/", () => "Menu Service - S2O");
-// app.Run();
-
 using Microsoft.EntityFrameworkCore;
 using MenuService.Data;
 using MenuService.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Cấu hình kết nối Database 
-// Lưu ý: "Host=postgres" là tên service trong Docker, "Password=h9minhhuy" là mật khẩu mới của bạn
+// 1. Kết nối Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? "Host=postgres;Port=5432;Database=s2o_db;Username=s2o;Password=h9minhhuy";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// 2. Cấu hình CORS (Cho phép Frontend gọi API)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
@@ -25,16 +18,15 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
 app.UseCors("AllowAll");
 
-// 3. Định nghĩa các API (Endpoints)
+// --- CÁC API ---
 
-// API: Lấy danh sách tất cả món ăn
+// 1. Lấy danh sách
 app.MapGet("/api/menu", async (AppDbContext db) =>
     await db.MenuItems.ToListAsync());
 
-// API: Thêm món ăn mới
+// 2. Thêm món mới
 app.MapPost("/api/menu", async (MenuItem item, AppDbContext db) =>
 {
     db.MenuItems.Add(item);
@@ -42,7 +34,25 @@ app.MapPost("/api/menu", async (MenuItem item, AppDbContext db) =>
     return Results.Created($"/api/menu/{item.Id}", item);
 });
 
-// API: Xoá món ăn theo ID
+// 3. Sửa món ăn (API MỚI)
+app.MapPut("/api/menu/{id}", async (int id, MenuItem updatedItem, AppDbContext db) =>
+{
+    var item = await db.MenuItems.FindAsync(id);
+    if (item is null) return Results.NotFound();
+
+    // Cập nhật thông tin
+    item.Name = updatedItem.Name;
+    item.Price = updatedItem.Price;
+    item.Description = updatedItem.Description;
+    item.ImageUrl = updatedItem.ImageUrl;
+    item.CategoryId = updatedItem.CategoryId;
+    item.IsAvailable = updatedItem.IsAvailable;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(item);
+});
+
+// 4. Xoá món ăn
 app.MapDelete("/api/menu/{id}", async (int id, AppDbContext db) =>
 {
     var item = await db.MenuItems.FindAsync(id);
@@ -53,7 +63,6 @@ app.MapDelete("/api/menu/{id}", async (int id, AppDbContext db) =>
     return Results.Ok();
 });
 
-// API kiểm tra service sống hay chết
-app.MapGet("/", () => "Menu Service is Running & Connected to DB!");
+app.MapGet("/", () => "Menu Service is Running!");
 
 app.Run();
