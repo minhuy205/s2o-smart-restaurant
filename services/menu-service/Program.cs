@@ -4,7 +4,7 @@ using MenuService.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Kết nối Database
+// 1. Kết nối Database // SỬA THÀNH (Đổi s2o_db -> menu_db):
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? "Host=postgres;Port=5432;Database=menu_db;Username=s2o;Password=h9minhhuy";
 

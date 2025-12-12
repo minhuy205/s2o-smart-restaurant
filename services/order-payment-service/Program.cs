@@ -8,7 +8,7 @@ using OrderPaymentService.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Kết nối Database (Dùng chung DB s2o_db với Menu Service)
+// 1. Kết nối Database (Dùng chung DB s2o_db với Menu Service) // SỬA THÀNH (Đổi s2o_db -> oder_db):
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? "Host=postgres;Port=5432;Database=order_db;Username=s2o;Password=h9minhhuy";
 

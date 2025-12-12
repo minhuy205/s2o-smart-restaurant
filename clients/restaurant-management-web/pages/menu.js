@@ -4,29 +4,30 @@ import { fetchAPI, SERVICES } from '../utils/apiConfig';
 import Link from 'next/link';
 
 export default function MenuManagement() {
+  // --- STATE DỮ LIỆU ---
   const [menuItems, setMenuItems] = useState([]);
-  const [showForm, setShowForm] = useState(false);
+  const [cart, setCart] = useState([]); // Giỏ hàng
   const [isLoading, setIsLoading] = useState(true);
+  
+  // --- STATE UI & FORM ADMIN ---
+  const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [filters, setFilters] = useState({ keyword: '', categoryId: 'all', minPrice: '', maxPrice: '' });
+  
+  // --- STATE UI ORDER (MODAL CHỌN MÓN) ---
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedDish, setSelectedDish] = useState(null); // Món đang chọn
+  const [orderNote, setOrderNote] = useState(''); // Ghi chú món
+  const [orderQty, setOrderQty] = useState(1);    // Số lượng
+  
+  const [tableName, setTableName] = useState('Khách lẻ');
 
-  // --- 1. STATE CHO BỘ LỌC ---
-  const [filters, setFilters] = useState({
-    keyword: '',        // Tìm theo tên
-    categoryId: 'all',  // Tìm theo danh mục
-    minPrice: '',       // Giá thấp nhất
-    maxPrice: ''        // Giá cao nhất
-  });
-
-  // State cho form thêm/sửa
+  // State cho món mới (Admin Form)
   const [newItem, setNewItem] = useState({
-    name: '',
-    price: '',
-    categoryId: 1,
-    imageUrl: '',
-    description: ''
+    name: '', price: '', categoryId: 1, imageUrl: '', description: ''
   });
 
-  // Tải dữ liệu
+  // --- 1. TẢI DỮ LIỆU ---
   const fetchMenu = async () => {
     setIsLoading(true);
     const data = await fetchAPI(SERVICES.MENU, '/api/menu');
@@ -38,69 +39,85 @@ export default function MenuManagement() {
     fetchMenu();
   }, []);
 
-  // --- 2. LOGIC LỌC DỮ LIỆU ---
+  // --- 2. LOGIC GIỎ HÀNG & ORDER MODAL ---
+  
+  // Mở modal khi bấm nút "+ Chọn"
+  const openOrderModal = (item) => {
+    setSelectedDish(item);
+    setOrderNote(''); // Reset ghi chú cũ
+    setOrderQty(1);   // Reset số lượng về 1
+    setShowOrderModal(true);
+  };
+
+  // Xác nhận thêm vào giỏ (Xử lý Ghi chú & Tách dòng)
+  const confirmAddToCart = () => {
+    if (!selectedDish) return;
+
+    const cartItem = {
+      ...selectedDish,
+      cartId: Date.now(), // ID duy nhất cho dòng này (để phân biệt món giống nhau nhưng khác note)
+      quantity: orderQty,
+      note: orderNote.trim() // Lưu ghi chú (cắt khoảng trắng thừa)
+    };
+
+    setCart(prev => [...prev, cartItem]);
+    
+    // Đóng modal & Reset
+    setShowOrderModal(false);
+    setSelectedDish(null);
+  };
+
+  // Xoá món khỏi giỏ
+  const removeFromCart = (cartId) => {
+    setCart(prev => prev.filter(item => item.cartId !== cartId));
+  };
+
+  const clearCart = () => setCart([]);
+
+  const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  // --- 3. TẠO ĐƠN HÀNG (QUAN TRỌNG: GỬI NOTE TRONG ITEMS) ---
+  const handleCreateOrder = async () => {
+    if (cart.length === 0) return alert("Giỏ hàng đang trống!");
+    if (!tableName) return alert("Vui lòng nhập tên bàn/khách hàng!");
+
+    if (!confirm(`Tạo đơn hàng cho bàn: ${tableName}\nTổng tiền: ${calculateTotal().toLocaleString()} đ?`)) return;
+
+    // Cấu trúc payload chuẩn gửi xuống Backend
+    const payload = {
+      tableName: tableName,
+      totalAmount: calculateTotal(),
+      status: "Pending",
+      items: cart.map(i => ({
+        menuItemName: i.name,
+        price: i.price,
+        quantity: i.quantity,
+        note: i.note || "" // <--- Gửi ghi chú của từng món xuống DB
+      }))
+    };
+
+    const res = await fetchAPI(SERVICES.ORDER, '/api/orders', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    if (res) {
+      alert("✅ Đã tạo đơn hàng thành công! Đơn đã chuyển xuống Bếp.");
+      setCart([]);
+      setTableName('Khách lẻ');
+    } else {
+      alert("❌ Lỗi khi tạo đơn hàng. Vui lòng thử lại.");
+    }
+  };
+
+  // --- 4. LOGIC QUẢN LÝ (THÊM/SỬA/XOÁ/LỌC) ---
   const filteredItems = menuItems.filter(item => {
-    // Lọc theo tên (không phân biệt hoa thường)
-    if (filters.keyword && !item.name.toLowerCase().includes(filters.keyword.toLowerCase())) {
-      return false;
-    }
-    // Lọc theo danh mục
-    if (filters.categoryId !== 'all' && item.categoryId !== Number(filters.categoryId)) {
-      return false;
-    }
-    // Lọc theo giá (Min)
-    if (filters.minPrice !== '' && item.price < Number(filters.minPrice)) {
-      return false;
-    }
-    // Lọc theo giá (Max)
-    if (filters.maxPrice !== '' && item.price > Number(filters.maxPrice)) {
-      return false;
-    }
+    if (filters.keyword && !item.name.toLowerCase().includes(filters.keyword.toLowerCase())) return false;
+    if (filters.categoryId !== 'all' && item.categoryId !== Number(filters.categoryId)) return false;
     return true;
   });
 
-  // Xử lý thay đổi bộ lọc
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-  };
-
-  // Reset bộ lọc
-  const clearFilters = () => {
-    setFilters({ keyword: '', categoryId: 'all', minPrice: '', maxPrice: '' });
-  };
-
-  // Xử lý thay đổi form nhập liệu
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setNewItem(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleEditClick = (item) => {
-    setNewItem({
-      name: item.name,
-      price: item.price,
-      categoryId: item.categoryId,
-      imageUrl: item.imageUrl || '',
-      description: item.description || ''
-    });
-    setEditingId(item.id);
-    setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleCancel = () => {
-    setNewItem({ name: '', price: '', categoryId: 1, imageUrl: '', description: '' });
-    setEditingId(null);
-    setShowForm(false);
-  };
-
   const handleSave = async () => {
-    if (!newItem.name || !newItem.price) {
-      alert("Vui lòng nhập tên và giá món!");
-      return;
-    }
-
     const payload = {
       name: newItem.name,
       price: Number(newItem.price),
@@ -122,163 +139,205 @@ export default function MenuManagement() {
     if (success) {
       fetchMenu();
       handleCancel();
-    } else {
-      alert("Có lỗi xảy ra, vui lòng thử lại.");
     }
   };
 
   const handleDelete = async (id) => {
-    if (confirm("Bạn có chắc chắn muốn xoá món này không?")) {
+    if (confirm("Xoá món này?")) {
       await fetchAPI(SERVICES.MENU, `/api/menu/${id}`, { method: 'DELETE' });
       fetchMenu();
     }
   };
 
+  // Helper form handlers
+  const handleChange = (e) => setNewItem({ ...newItem, [e.target.name]: e.target.value });
+  const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
+  const handleEditClick = (item) => {
+    setNewItem({ ...item, imageUrl: item.imageUrl || '', description: item.description || '' });
+    setEditingId(item.id);
+    setShowForm(true);
+  };
+  const handleCancel = () => {
+    setNewItem({ name: '', price: '', categoryId: 1, imageUrl: '', description: '' });
+    setEditingId(null);
+    setShowForm(false);
+  };
+
   return (
-    <div style={{ padding: 20, fontFamily: 'Arial', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <Link href="/" style={{textDecoration:'none', color:'#666', fontSize: 14}}>← Quay lại</Link>
-          <h1 style={{marginTop: 5, color: '#333'}}>🍲 Quản lý Thực Đơn</h1>
-        </div>
-        
-        {!showForm && (
-          <button 
-            onClick={() => setShowForm(true)}
-            style={{ ...btnStyle, backgroundColor: '#28a745' }}>
-            + Thêm món mới
+    <div style={{ display: 'flex', height: '100vh', fontFamily: 'Arial', backgroundColor: '#f4f6f8' }}>
+      
+      {/* --- PHẦN 1: DANH SÁCH MENU (BÊN TRÁI) --- */}
+      <div style={{ flex: 1, padding: 20, overflowY: 'auto', position: 'relative' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <Link href="/" style={{textDecoration:'none', color:'#666', fontSize: 14}}>← Quay lại</Link>
+            <h2 style={{margin: '5px 0', color: '#333'}}>🍲 Quản lý & Bán Hàng</h2>
+          </div>
+          <button onClick={() => setShowForm(!showForm)} style={{ ...btnStyle, backgroundColor: showForm ? '#6c757d' : '#28a745' }}>
+            {showForm ? 'Đóng Form' : '+ Thêm món mới'}
           </button>
-        )}
-      </div>
+        </div>
 
-      {/* FORM THÊM/SỬA (Giữ nguyên) */}
-      {showForm && (
-        <div style={{ marginBottom: 30, padding: 20, border: '1px solid #ddd', borderRadius: 8, backgroundColor: '#f8f9fa', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-          <h3 style={{marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: 10}}>
-            {editingId ? `✏️ Cập nhật món #${editingId}` : '✨ Thêm món mới'}
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
-            <div><label>Tên món:</label><input name="name" value={newItem.name} onChange={handleChange} style={inputStyle} /></div>
-            <div><label>Giá (VNĐ):</label><input name="price" type="number" value={newItem.price} onChange={handleChange} style={inputStyle} /></div>
-            <div>
-              <label>Danh mục:</label>
+        {/* FORM THÊM/SỬA (ADMIN) */}
+        {showForm && (
+          <div style={{ padding: 15, backgroundColor: 'white', borderRadius: 8, marginBottom: 20, boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+            <h4 style={{marginTop:0}}>{editingId ? 'Sửa món' : 'Thêm món'}</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <input name="name" value={newItem.name} onChange={handleChange} placeholder="Tên món" style={inputStyle} />
+              <input name="price" type="number" value={newItem.price} onChange={handleChange} placeholder="Giá" style={inputStyle} />
               <select name="categoryId" value={newItem.categoryId} onChange={handleChange} style={inputStyle}>
-                <option value="1">Món nước</option>
-                <option value="2">Món khô</option>
-                <option value="3">Đồ uống</option>
-                <option value="4">Tráng miệng</option>
-                <option value="5">Khác</option>
+                <option value="1">Món nước</option><option value="2">Món khô</option><option value="3">Đồ uống</option><option value="4">Tráng miệng</option><option value="5">Khác</option>
               </select>
+              <input name="imageUrl" value={newItem.imageUrl} onChange={handleChange} placeholder="URL Ảnh" style={inputStyle} />
+              <input name="description" value={newItem.description} onChange={handleChange} placeholder="Mô tả chi tiết (VD: Nguyên liệu...)" style={{...inputStyle, gridColumn: 'span 2'}} />
             </div>
-            <div><label>Link ảnh (URL):</label><input name="imageUrl" value={newItem.imageUrl} onChange={handleChange} style={inputStyle} /></div>
-            <div style={{ gridColumn: '1 / -1' }}><label>Mô tả:</label><textarea name="description" value={newItem.description} onChange={handleChange} style={{...inputStyle, height: 60}} /></div>
+            <div style={{marginTop: 10, textAlign:'right'}}>
+              <button onClick={handleSave} style={{...btnStyle, backgroundColor: '#007bff'}}>Lưu Menu</button>
+            </div>
           </div>
-          <div style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button onClick={handleCancel} style={{ ...btnStyle, backgroundColor: '#6c757d' }}>Hủy bỏ</button>
-            <button onClick={handleSave} style={{ ...btnStyle, backgroundColor: '#007bff' }}>{editingId ? 'Lưu thay đổi' : 'Thêm ngay'}</button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* --- THANH CÔNG CỤ LỌC (MỚI) --- */}
-      <div style={{ backgroundColor: '#fff', padding: 15, borderRadius: 8, border: '1px solid #ddd', marginBottom: 20, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'end' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <label style={{fontSize: 12, fontWeight: 'bold', color: '#555'}}>🔍 Tìm tên món:</label>
-          <input 
-            name="keyword" 
-            value={filters.keyword} 
-            onChange={handleFilterChange} 
-            placeholder="Nhập tên món ăn..." 
-            style={filterInputStyle} 
-          />
-        </div>
-
-        <div style={{ width: 150 }}>
-          <label style={{fontSize: 12, fontWeight: 'bold', color: '#555'}}>📂 Danh mục:</label>
-          <select name="categoryId" value={filters.categoryId} onChange={handleFilterChange} style={filterInputStyle}>
-            <option value="all">-- Tất cả --</option>
-            <option value="1">Món nước</option>
-            <option value="2">Món khô</option>
-            <option value="3">Đồ uống</option>
-            <option value="4">Tráng miệng</option>
-            <option value="5">Khác</option>
+        {/* BỘ LỌC */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 15 }}>
+          <input name="keyword" value={filters.keyword} onChange={handleFilterChange} placeholder="🔍 Tìm món..." style={{...inputStyle, flex: 2}} />
+          <select name="categoryId" value={filters.categoryId} onChange={handleFilterChange} style={{...inputStyle, flex: 1}}>
+            <option value="all">Tất cả</option><option value="1">Món nước</option><option value="2">Món khô</option><option value="3">Đồ uống</option><option value="4">Tráng miệng</option><option value="5">Khác</option>
           </select>
         </div>
 
-        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-           <div>
-             <label style={{fontSize: 12, fontWeight: 'bold', color: '#555'}}>💰 Giá từ:</label>
-             <input name="minPrice" type="number" value={filters.minPrice} onChange={handleFilterChange} placeholder="0" style={{...filterInputStyle, width: 100}} />
-           </div>
-           <span style={{marginBottom: 8}}>-</span>
-           <div>
-             <label style={{fontSize: 12, fontWeight: 'bold', color: '#555'}}>Đến:</label>
-             <input name="maxPrice" type="number" value={filters.maxPrice} onChange={handleFilterChange} placeholder="Tối đa" style={{...filterInputStyle, width: 100}} />
-           </div>
+        {/* DANH SÁCH MÓN */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 15 }}>
+          {filteredItems.map(item => (
+            <div key={item.id} style={{ backgroundColor: 'white', borderRadius: 8, overflow: 'hidden', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
+              <img src={item.imageUrl || 'https://via.placeholder.com/150'} style={{height: 120, objectFit: 'cover'}} />
+              <div style={{ padding: 10, flex: 1 }}>
+                <div style={{fontWeight:'bold'}}>{item.name}</div>
+                <div style={{fontSize: 12, color: '#777', marginBottom: 5, height: 32, overflow:'hidden'}}>{item.description}</div>
+                <div style={{color: '#d35400', fontWeight:'bold', margin: '5px 0'}}>{item.price.toLocaleString()} đ</div>
+                <div style={{display:'flex', gap: 5, marginTop: 10}}>
+                   {/* Nút MỞ MODAL CHỌN */}
+                   <button onClick={() => openOrderModal(item)} style={{...btnStyle, backgroundColor: '#e67e22', flex: 1, padding: '5px'}}>+ Chọn</button>
+                </div>
+                <div style={{display:'flex', justifyContent:'space-between', marginTop: 10, fontSize: 12}}>
+                   <span onClick={() => handleEditClick(item)} style={{cursor:'pointer', color: 'blue'}}>Sửa</span>
+                   <span onClick={() => handleDelete(item.id)} style={{cursor:'pointer', color: 'red'}}>Xoá</span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <button onClick={clearFilters} style={{ ...btnStyle, backgroundColor: '#6c757d', padding: '8px 15px', height: 38, marginBottom: 1 }}>Xoá lọc</button>
+        {/* --- MODAL ORDER (POPUP) --- */}
+        {showOrderModal && selectedDish && (
+          <div style={modalOverlayStyle}>
+            <div style={modalContentStyle}>
+              <h3>{selectedDish.name}</h3>
+              <p style={{color:'#d35400', fontWeight:'bold'}}>{selectedDish.price.toLocaleString()} đ</p>
+              
+              <div style={{marginBottom: 15}}>
+                <label style={{display:'block', marginBottom: 5, fontWeight:'bold'}}>Số lượng:</label>
+                <div style={{display:'flex', alignItems:'center', gap: 10}}>
+                  <button onClick={() => setOrderQty(q => Math.max(1, q - 1))} style={qtyBtnStyle}>-</button>
+                  <span style={{fontSize: 18, fontWeight:'bold'}}>{orderQty}</span>
+                  <button onClick={() => setOrderQty(q => q + 1)} style={qtyBtnStyle}>+</button>
+                </div>
+              </div>
+
+              <div style={{marginBottom: 20}}>
+                <label style={{display:'block', marginBottom: 5, fontWeight:'bold'}}>Ghi chú (cho bếp):</label>
+                <textarea 
+                  rows="3" 
+                  value={orderNote}
+                  onChange={(e) => setOrderNote(e.target.value)}
+                  placeholder="Ví dụ: Không hành, ít cay, mang về..."
+                  style={{width: '100%', padding: 8, borderRadius: 4, borderColor: '#ccc'}}
+                />
+              </div>
+
+              <div style={{display:'flex', gap: 10, justifyContent:'flex-end'}}>
+                <button onClick={() => setShowOrderModal(false)} style={{...btnStyle, backgroundColor: '#6c757d'}}>Hủy</button>
+                <button onClick={confirmAddToCart} style={{...btnStyle, backgroundColor: '#28a745'}}>Thêm vào giỏ</button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
-      
-      {/* DANH SÁCH MÓN ĂN */}
-      {isLoading ? <p style={{textAlign:'center'}}>⏳ Đang tải dữ liệu...</p> : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', border: '1px solid #eee' }}>
-            <thead>
-              <tr style={{backgroundColor: '#343a40', color: 'white'}}>
-                <th style={thStyle}>ID</th>
-                <th style={thStyle}>Hình ảnh</th>
-                <th style={thStyle}>Tên món</th>
-                <th style={thStyle}>Danh mục</th>
-                <th style={thStyle}>Giá</th>
-                <th style={thStyle}>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.length > 0 ? filteredItems.map(item => (
-                <tr key={item.id} style={{borderBottom: '1px solid #eee'}}>
-                  <td style={{...tdStyle, textAlign: 'center', color: '#888'}}>#{item.id}</td>
-                  <td style={{...tdStyle, textAlign: 'center'}}>
-                    <img src={item.imageUrl || 'https://via.placeholder.com/50'} alt={item.name} 
-                         style={{width: 60, height: 60, objectFit:'cover', borderRadius: 4, border: '1px solid #ddd'}} />
-                  </td>
-                  <td style={{...tdStyle, fontWeight: 'bold'}}>{item.name}</td>
-                  <td style={tdStyle}>{getCategoryName(item.categoryId)}</td>
-                  <td style={{...tdStyle, color: '#d35400', fontWeight:'bold'}}>{item.price.toLocaleString()} đ</td>
-                  <td style={{...tdStyle, textAlign: 'center'}}>
-                    <button onClick={() => handleEditClick(item)} style={{ ...actionBtnStyle, backgroundColor: '#ffc107', color: 'black' }}>✏️ Sửa</button>
-                    <button onClick={() => handleDelete(item.id)} style={{ ...actionBtnStyle, backgroundColor: '#dc3545', color: 'white', marginLeft: 8 }}>🗑 Xoá</button>
-                  </td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan="6" style={{padding: 30, textAlign: 'center', color: '#999', fontStyle: 'italic'}}>
-                    Không tìm thấy món nào phù hợp với bộ lọc.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+      {/* --- PHẦN 2: GIỎ HÀNG (BÊN PHẢI) --- */}
+      <div style={{ width: 350, backgroundColor: 'white', borderLeft: '1px solid #ddd', display: 'flex', flexDirection: 'column', height: '100vh' }}>
+        <div style={{ padding: 20, backgroundColor: '#2c3e50', color: 'white' }}>
+          <h3 style={{ margin: 0 }}>🛒 Đơn Hàng Mới</h3>
+          <div style={{ marginTop: 10 }}>
+            <label style={{fontSize: 12, display: 'block', marginBottom: 5}}>Khách hàng / Bàn:</label>
+            <input 
+              value={tableName} 
+              onChange={(e) => setTableName(e.target.value)} 
+              style={{ width: '100%', padding: 8, borderRadius: 4, border: 'none' }} 
+              placeholder="Nhập tên bàn..."
+            />
+          </div>
         </div>
-      )}
+
+        {/* LIST ITEM TRONG GIỎ */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 15 }}>
+          {cart.length === 0 ? (
+            <div style={{textAlign: 'center', color: '#999', marginTop: 50}}>
+              <p>Chưa có món nào.</p>
+              <p>Hãy bấm "+ Chọn" từ thực đơn.</p>
+            </div>
+          ) : (
+            cart.map(item => (
+              <div key={item.cartId} style={{ borderBottom: '1px solid #eee', paddingBottom: 10, marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{flex: 1}}>
+                    <div style={{fontWeight:'bold'}}>{item.name}</div>
+                    {/* HIỂN THỊ GHI CHÚ */}
+                    {item.note && (
+                      <div style={{fontSize: 12, color: '#e67e22', fontStyle: 'italic', marginTop: 2, marginBottom: 2}}>
+                        ✍️ {item.note}
+                      </div>
+                    )}
+                    <div style={{fontSize: 12, color: '#888'}}>{item.price.toLocaleString()} đ x {item.quantity}</div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{fontWeight:'bold'}}>{(item.price * item.quantity).toLocaleString()}</span>
+                    <button onClick={() => removeFromCart(item.cartId)} style={{...qtyBtnStyle, color:'red', borderColor:'red', fontSize: 10}}>x</button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* TỔNG TIỀN & NÚT TẠO ĐƠN */}
+        <div style={{ padding: 20, borderTop: '1px solid #eee', backgroundColor: '#f8f9fa' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15, fontSize: 18, fontWeight: 'bold' }}>
+            <span>Tổng cộng:</span>
+            <span style={{ color: '#d35400' }}>{calculateTotal().toLocaleString()} đ</span>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={clearCart} style={{ ...btnStyle, backgroundColor: '#6c757d', flex: 1 }}>Hủy</button>
+            <button onClick={handleCreateOrder} style={{ ...btnStyle, backgroundColor: '#27ae60', flex: 2 }}>✅ Gửi Bếp</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }
 
-const getCategoryName = (id) => {
-  switch(id) {
-    case 1: return 'Món nước';
-    case 2: return 'Món khô';
-    case 3: return 'Đồ uống';
-    case 4: return 'Tráng miệng';
-    case 5: return 'Khác';
-    default: return 'Không rõ';
-  }
-};
+// CSS Styles
+const inputStyle = { width: '100%', padding: '8px', borderRadius: 4, border: '1px solid #ced4da', boxSizing: 'border-box' };
+const btnStyle = { padding: '8px 15px', border: 'none', borderRadius: 4, cursor: 'pointer', color: 'white', fontWeight: 'bold', fontSize: 14 };
+const qtyBtnStyle = { width: 25, height: 25, borderRadius: '50%', border: '1px solid #ccc', backgroundColor: 'white', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center' };
 
-const inputStyle = { width: '100%', padding: '10px', borderRadius: 4, border: '1px solid #ced4da', boxSizing: 'border-box', marginTop: 5 };
-const filterInputStyle = { width: '100%', padding: '8px', borderRadius: 4, border: '1px solid #ced4da', boxSizing: 'border-box', marginTop: 2 };
-const btnStyle = { padding: '10px 20px', border: 'none', borderRadius: 4, cursor: 'pointer', color: 'white', fontWeight: 'bold', fontSize: 14 };
-const actionBtnStyle = { padding: '6px 12px', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 };
-const thStyle = { padding: 15, textAlign: 'left' };
-const tdStyle = { padding: 15 };
+// Style mới cho Modal
+const modalOverlayStyle = {
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+  backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+};
+const modalContentStyle = {
+  backgroundColor: 'white', padding: 20, borderRadius: 8, width: '90%', maxWidth: 400, boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
+};
