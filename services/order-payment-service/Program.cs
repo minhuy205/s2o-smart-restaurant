@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 1. Kết nối Database (Dùng chung DB s2o_db với Menu Service)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? "Host=postgres;Port=5432;Database=s2o_db;Username=s2o;Password=h9minhhuy";
+    ?? "Host=postgres;Port=5432;Database=order_db;Username=s2o;Password=h9minhhuy";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));

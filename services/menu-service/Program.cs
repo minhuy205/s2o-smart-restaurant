@@ -6,7 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 1. Kết nối Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? "Host=postgres;Port=5432;Database=s2o_db;Username=s2o;Password=h9minhhuy";
+    ?? "Host=postgres;Port=5432;Database=menu_db;Username=s2o;Password=h9minhhuy";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
