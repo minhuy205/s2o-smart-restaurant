@@ -10,7 +10,20 @@ export const API_BASE_URLS = {
     MENU: 'MENU_SERVICE',
     ORDER: 'ORDER_SERVICE',
   };
-  
+
+// clients/guest-web/utils/apiConfig.js
+
+// export const API_BASE_URLS = {
+//     // Thay localhost bằng IP của bạn
+//     MENU_SERVICE: "http://192.168.111.165:7002",
+//     ORDER_SERVICE: "http://192.168.111.198:7003",
+// };
+
+// export const SERVICES = {
+//     MENU: 'MENU_SERVICE',
+//     ORDER: 'ORDER_SERVICE',
+// };
+// ... (giữ nguyên phần còn lại của file)
   export const fetchAPI = async (service, endpoint, options = {}) => {
     const baseUrl = API_BASE_URLS[service];
     if (!baseUrl) {
