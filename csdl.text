@@ -1,0 +1,135 @@
+order_db
+-- 1. Xóa bảng cũ trước để cập nhật cấu trúc mới (Quan trọng)
+DROP TABLE IF EXISTS "OrderItems";
+DROP TABLE IF EXISTS "Orders";
+
+-- 2. Tạo bảng Orders (Giữ nguyên)
+CREATE TABLE "Orders" (
+    "Id" SERIAL PRIMARY KEY,
+    "TableName" TEXT,
+    "TotalAmount" DECIMAL(18,2),
+    "Status" TEXT,
+    "CreatedAt" TIMESTAMP
+);
+
+-- 3. Tạo bảng OrderItems (Đã thêm cột Note)
+CREATE TABLE "OrderItems" (
+    "Id" SERIAL PRIMARY KEY,
+    "MenuItemName" TEXT,
+    "Price" DECIMAL(18,2),
+    "Quantity" INTEGER,
+    "OrderId" INTEGER REFERENCES "Orders"("Id"),
+    
+    "Note" TEXT -- <--- Đã thêm phần này
+);
+
+-- 4. Thêm dữ liệu mẫu để test
+INSERT INTO "Orders" ("TableName", "TotalAmount", "Status", "CreatedAt") 
+VALUES ('Bàn 1', 55000, 'Pending', NOW());
+
+-- Thêm món kèm ghi chú
+INSERT INTO "OrderItems" ("MenuItemName", "Price", "Quantity", "OrderId", "Note")
+VALUES ('Phở Bò Tái', 55000, 1, 1, 'Không hành, nhiều nước béo');
+
+
+-- Dành cho PostgreSQL (Database: menu_db)
+
+-- 1. Xóa bảng cũ nếu có (để reset)
+DROP TABLE IF EXISTS "MenuItems";
+DROP TABLE IF EXISTS "Categories";
+
+-- 2. Tạo bảng Danh mục (Categories)
+CREATE TABLE "Categories" (
+    "Id" SERIAL PRIMARY KEY,
+    "Name" VARCHAR(100) NOT NULL
+);
+
+-- 3. Tạo bảng Món ăn (MenuItems)
+CREATE TABLE "MenuItems" (
+    "Id" SERIAL PRIMARY KEY,
+    "Name" VARCHAR(200) NOT NULL,
+    "Price" DECIMAL(18, 2) NOT NULL,
+    "CategoryId" INT NOT NULL,
+    "Description" TEXT NULL,     -- Mô tả món ăn
+    "ImageUrl" TEXT NULL,        -- Link ảnh
+    "IsAvailable" BOOLEAN DEFAULT TRUE,
+    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Khóa ngoại liên kết với bảng Categories
+    CONSTRAINT fk_category
+      FOREIGN KEY ("CategoryId") 
+      REFERENCES "Categories"("Id")
+      ON DELETE SET NULL
+);
+
+-- 4. Thêm dữ liệu mẫu (Seeding Data)
+
+-- Thêm danh mục
+INSERT INTO "Categories" ("Name") VALUES 
+('Món nước'),    -- Id 1
+('Món khô'),     -- Id 2
+('Đồ uống'),     -- Id 3
+('Tráng miệng'), -- Id 4
+('Khác');        -- Id 5
+
+-- Thêm món ăn mẫu
+INSERT INTO "MenuItems" ("Name", "Price", "CategoryId", "Description", "ImageUrl", "IsAvailable") VALUES 
+('Phở Bò Tái', 55000, 1, 'Phở bò tái truyền thống, nước dùng hầm xương 24h', 'https://i.imgur.com/example1.jpg', TRUE),
+('Cơm Tấm Sườn Bì', 60000, 2, 'Sườn nướng mật ong, bì thính nhà làm', 'https://i.imgur.com/example2.jpg', TRUE),
+('Trà Đào Cam Sả', 35000, 3, 'Trà đào tươi mát lạnh', 'https://i.imgur.com/example3.jpg', TRUE),
+('Bánh Flan', 15000, 4, 'Bánh flan caramen béo ngậy', 'https://i.imgur.com/example4.jpg', TRUE);
+
+
+-- ================================================================
+-- DATABASE: s2o_auth_db
+-- ================================================================
+
+-- 1. Tạo bảng Tenants (Doanh nghiệp)
+CREATE TABLE IF NOT EXISTS "Tenants" (
+    "Id" SERIAL PRIMARY KEY,
+    "Name" TEXT NOT NULL,
+    "Address" TEXT,
+    "LogoUrl" TEXT,
+    "IsActive" BOOLEAN NOT NULL DEFAULT TRUE,
+    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Tạo bảng Users (Người dùng)
+CREATE TABLE IF NOT EXISTS "Users" (
+    "Id" SERIAL PRIMARY KEY,
+    "Username" TEXT NOT NULL UNIQUE,
+    "PasswordHash" TEXT NOT NULL,
+    "FullName" TEXT,
+    "Role" TEXT NOT NULL, -- 'Admin', 'Owner', 'Customer'
+    "TenantId" INTEGER,   -- Link tới bảng Tenants
+    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "FK_Users_Tenants_TenantId" 
+        FOREIGN KEY ("TenantId") 
+        REFERENCES "Tenants" ("Id") 
+        ON DELETE SET NULL
+);
+
+-- 3. Index
+CREATE INDEX IF NOT EXISTS "IX_Users_Username" ON "Users" ("Username");
+CREATE INDEX IF NOT EXISTS "IX_Users_TenantId" ON "Users" ("TenantId");
+
+-- ================================================================
+-- DATA MẪU (SEED DATA)
+-- ================================================================
+
+-- Tạo 1 Quán mẫu
+INSERT INTO "Tenants" ("Name", "Address", "IsActive")
+VALUES ('S2O Restaurant', '123 Đường Demo, TP.HCM', TRUE);
+
+-- Tạo User Admin (Quản trị hệ thống)
+INSERT INTO "Users" ("Username", "PasswordHash", "FullName", "Role", "TenantId")
+VALUES ('admin', '$2a$11$ExampleHash...', 'System Administrator', 'Admin', NULL);
+
+-- Tạo User Chủ quán (Của quán ID=1)
+INSERT INTO "Users" ("Username", "PasswordHash", "FullName", "Role", "TenantId")
+VALUES ('owner1', '$2a$11$ExampleHash...', 'Chủ Quán S2O', 'Owner', 1);
+
+-- Tạo User Khách (Mobile App)
+INSERT INTO "Users" ("Username", "PasswordHash", "FullName", "Role", "TenantId")
+VALUES ('guest_mobile', '$2a$11$ExampleHash...', 'Khách Hàng Mobile', 'Customer', NULL);
