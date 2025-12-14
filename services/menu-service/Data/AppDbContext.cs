@@ -9,4 +9,5 @@ public class AppDbContext : DbContext
 
     public DbSet<MenuItem> MenuItems => Set<MenuItem>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Table> Tables => Set<Table>(); // <--- THÊM DÒNG NÀY
 }

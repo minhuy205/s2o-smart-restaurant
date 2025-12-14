@@ -1,18 +1,16 @@
+// clients/restaurant-management-web/pages/index.js
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
 
 export default function Home() {
-  // --- STATE ---
+  // ... (Giữ nguyên phần State, Effect và hàm Login/Logout như cũ)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
-  
-  // State cho Form Login
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // --- EFFECT: KIỂM TRA ĐĂNG NHẬP LÚC MỞ WEB ---
   useEffect(() => {
     const storedUser = localStorage.getItem('s2o_user');
     if (storedUser) {
@@ -21,32 +19,20 @@ export default function Home() {
     }
   }, []);
 
-  // --- HÀM XỬ LÝ ĐĂNG NHẬP ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
-
     try {
-      // Gọi API Auth Service
-      const res = await fetchAPI(SERVICES.AUTH, '/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ username, password })
-      });
-
+      const res = await fetchAPI(SERVICES.AUTH, '/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
       if (res && res.token) {
-        // Lưu thông tin vào LocalStorage
         localStorage.setItem('s2o_token', res.token);
         localStorage.setItem('s2o_user', JSON.stringify(res));
-        
-        // Cập nhật State
         setUser(res);
         setIsLoggedIn(true);
       } else {
-        setLoginError('Đăng nhập thất bại! Kiểm tra lại tài khoản.');
+        setLoginError('Đăng nhập thất bại!');
       }
-    } catch (err) {
-      setLoginError('Lỗi kết nối Server.');
-    }
+    } catch (err) { setLoginError('Lỗi kết nối Server.'); }
   };
 
   const handleLogout = () => {
@@ -56,34 +42,20 @@ export default function Home() {
     setUser(null);
   };
 
-  // --- RENDER: MÀN HÌNH LOGIN (NẾU CHƯA ĐĂNG NHẬP) ---
   if (!isLoggedIn) {
+    // ... (Giữ nguyên form login)
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f0f2f5', fontFamily: 'Arial' }}>
         <form onSubmit={handleLogin} style={{ padding: 40, backgroundColor: 'white', borderRadius: 8, boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: 350 }}>
           <h2 style={{ textAlign: 'center', color: '#333' }}>S2O Restaurant Login</h2>
-          
           {loginError && <p style={{ color: 'red', fontSize: 14, textAlign: 'center' }}>{loginError}</p>}
-
           <div style={{ marginBottom: 15 }}>
             <label style={{ display: 'block', marginBottom: 5 }}>Tài khoản:</label>
-            <input 
-              type="text" 
-              value={username} 
-              onChange={(e) => setUsername(e.target.value)} 
-              style={inputStyle} 
-              required 
-            />
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} style={inputStyle} required />
           </div>
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', marginBottom: 5 }}>Mật khẩu:</label>
-            <input 
-              type="password" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              style={inputStyle} 
-              required 
-            />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} required />
           </div>
           <button type="submit" style={{ ...btnStyle, width: '100%', backgroundColor: '#007bff' }}>Đăng nhập</button>
         </form>
@@ -91,7 +63,7 @@ export default function Home() {
     );
   }
 
-  // --- RENDER: DASHBOARD (NẾU ĐÃ ĐĂNG NHẬP) ---
+  // --- RENDER DASHBOARD (CÓ THÊM NÚT HISTORY) ---
   return (
     <div style={{ padding: 40, fontFamily: 'Arial, sans-serif' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -109,21 +81,34 @@ export default function Home() {
       <hr style={{ margin: '20px 0' }} />
       
       <h2>Chọn chức năng làm việc:</h2>
-      <div style={{ display: 'flex', gap: 20, marginTop: 20 }}>
+      <div style={{ display: 'flex', gap: 20, marginTop: 20, flexWrap: 'wrap' }}>
+        
         <Link href="/menu" style={cardStyle}>
           <h3>🥗 Quản lý Menu</h3>
-          <p>Thêm, sửa, xoá món ăn và danh mục.</p>
+          <p>Thêm, sửa, xoá món ăn.</p>
+        </Link>
+
+        <Link href="/tables" style={{...cardStyle, backgroundColor: '#e8f5e9', borderColor: '#2ecc71'}}>
+          <h3>🪑 Sơ Đồ Bàn (POS)</h3>
+          <p>Xem bàn & Gọi món.</p>
         </Link>
 
         <Link href="/kitchen" style={cardStyle}>
-          <h3>🔥 Màn hình Bếp (KDS)</h3>
-          <p>Xem vé món ăn và cập nhật trạng thái nấu.</p>
+          <h3>🔥 Bếp (KDS)</h3>
+          <p>Trạng thái nấu.</p>
         </Link>
 
         <Link href="/cashier" style={cardStyle}>
           <h3>💵 Thu Ngân</h3>
-          <p>Xem sơ đồ bàn, đơn hàng và thanh toán.</p>
+          <p>Thanh toán hoá đơn.</p>
         </Link>
+
+        {/* NÚT MỚI */}
+        <Link href="/history" style={{...cardStyle, backgroundColor: '#fff8e1', borderColor: '#f1c40f'}}>
+          <h3>📊 Lịch Sử & Doanh Thu</h3>
+          <p>Xem đơn đã bán & Tổng tiền.</p>
+        </Link>
+
       </div>
     </div>
   );
@@ -133,5 +118,5 @@ const inputStyle = { width: '100%', padding: '10px', borderRadius: 4, border: '1
 const btnStyle = { padding: '10px 20px', border: 'none', borderRadius: 4, cursor: 'pointer', color: 'white', fontWeight: 'bold' };
 const cardStyle = {
   border: '1px solid #ddd', padding: '20px', borderRadius: '8px',
-  textDecoration: 'none', color: 'black', width: '250px', cursor: 'pointer', backgroundColor: '#fafafa'
+  textDecoration: 'none', color: 'black', width: '250px', cursor: 'pointer', backgroundColor: '#fafafa', marginBottom: 20
 };

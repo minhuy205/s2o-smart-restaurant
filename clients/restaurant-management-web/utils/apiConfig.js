@@ -1,10 +1,17 @@
 // clients/restaurant-management-web/utils/apiConfig.js
 
+// export const API_BASE_URLS = {
+//   MENU_SERVICE: "http://localhost:7002",
+//   ORDER_PAYMENT_SERVICE: "http://localhost:7003",
+//   RESERVATION_SERVICE: "http://localhost:7004",
+//   TENANT_AUTH_SERVICE: "http://localhost:7001", // Thêm dòng này
+// };
+
 export const API_BASE_URLS = {
-  MENU_SERVICE: "http://localhost:7002",
-  ORDER_PAYMENT_SERVICE: "http://localhost:7003",
+  MENU_SERVICE: "http://192.168.1.25:7002",
+  ORDER_PAYMENT_SERVICE: "http://192.168.1.22:7003",
   RESERVATION_SERVICE: "http://localhost:7004",
-  TENANT_AUTH_SERVICE: "http://localhost:7001", // Thêm dòng này
+  TENANT_AUTH_SERVICE: "http://192.168.1.22:7001", // Thêm dòng này
 };
 
 export const SERVICES = {

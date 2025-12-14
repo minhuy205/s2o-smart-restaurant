@@ -2,15 +2,20 @@
 import React, { useState, useEffect } from 'react';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
 import Link from 'next/link';
+import { useRouter } from 'next/router'; // 1. Thêm import này
 
 export default function MenuManagement() {
+  const router = useRouter(); // 2. Khởi tạo Router
+  // 3. Lấy thông tin bàn từ URL (nếu có)
+  const { tableId, tableName: tableNameParam } = router.query;
+
   // --- STATE ---
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null); // Lưu user info
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // ... (Giữ nguyên các state khác: showForm, editingId, filters, showOrderModal...)
+  // UI States
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [filters, setFilters] = useState({ keyword: '', categoryId: 'all', minPrice: '', maxPrice: '' });
@@ -38,19 +43,22 @@ export default function MenuManagement() {
     }
   }, []);
 
+  // 4. Tự động điền tên bàn nếu được chuyển từ trang Sơ đồ bàn
+  useEffect(() => {
+    if (tableNameParam) {
+      setTableName(tableNameParam);
+    }
+  }, [tableNameParam]);
+
   const fetchMenu = async (tenantId) => {
     setIsLoading(true);
-    // TRUYỀN TENANT ID VÀO QUERY PARAM
     if (!tenantId) return;
     const data = await fetchAPI(SERVICES.MENU, `/api/menu?tenantId=${tenantId}`);
     if (data) setMenuItems(data.sort((a, b) => b.id - a.id));
     setIsLoading(false);
   };
 
-  // ... (Giữ nguyên logic Giỏ hàng & Order Modal không thay đổi) ...
-  // (openOrderModal, confirmAddToCart, removeFromCart, clearCart, calculateTotal)
-  
-  // Mở modal khi bấm nút "+ Chọn"
+  // --- LOGIC GIỎ HÀNG ---
   const openOrderModal = (item) => {
     setSelectedDish(item);
     setOrderNote(''); 
@@ -75,19 +83,17 @@ export default function MenuManagement() {
   const clearCart = () => setCart([]);
   const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  // --- HANDLE CREATE ORDER ---
+  // --- HANDLE CREATE ORDER (CẬP NHẬT LOGIC BÀN) ---
   const handleCreateOrder = async () => {
-    // ... (Logic tạo đơn hàng giữ nguyên, có thể cần thêm TenantId vào đơn hàng nếu Service Order yêu cầu)
     if (cart.length === 0) return alert("Giỏ hàng đang trống!");
     if (!tableName) return alert("Vui lòng nhập tên bàn/khách hàng!");
     
-    // Lưu ý: Nếu OrderPaymentService cũng cần TenantId, bạn cần sửa cả payload này.
-    // Tạm thời giữ nguyên như code cũ, chỉ xử lý phần Menu.
+    // Payload tạo đơn
     const payload = {
       tableName: tableName,
       totalAmount: calculateTotal(),
       status: "Pending",
-      tenantId: currentUser?.tenantId, // Nên thêm dòng này nếu Order Service hỗ trợ
+      tenantId: currentUser?.tenantId,
       items: cart.map(i => ({
         menuItemName: i.name,
         price: i.price,
@@ -95,18 +101,36 @@ export default function MenuManagement() {
         note: i.note || ""
       }))
     };
-    // ... (Fetch API gọi Order)
+
+    // Gọi API tạo đơn
     const res = await fetchAPI(SERVICES.ORDER, '/api/orders', { method: 'POST', body: JSON.stringify(payload) });
-    if (res) {
+    
+    if (res && res.id) {
+        // 5. Nếu có tableId (đến từ sơ đồ bàn), cập nhật trạng thái bàn -> Occupied
+        if (tableId) {
+            await fetchAPI(SERVICES.MENU, `/api/tables/${tableId}/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ 
+                    status: 'Occupied', 
+                    currentOrderId: res.id // Gán Order ID vào bàn
+                })
+            });
+        }
+
         alert("✅ Đã tạo đơn hàng thành công!");
         setCart([]);
         setTableName('Khách lẻ');
+        
+        // 6. Quay về trang sơ đồ bàn nếu có tableId
+        if (tableId) {
+            router.push('/tables');
+        }
     } else {
         alert("❌ Lỗi khi tạo đơn hàng.");
     }
   };
 
-  // --- 4. LOGIC QUẢN LÝ (SAVE / DELETE) ---
+  // --- LOGIC QUẢN LÝ (SAVE / DELETE) ---
   const handleSave = async () => {
     if (!currentUser?.tenantId) return alert("Lỗi: Không tìm thấy mã nhà hàng!");
 
@@ -117,7 +141,7 @@ export default function MenuManagement() {
       imageUrl: newItem.imageUrl || 'https://via.placeholder.com/150',
       description: newItem.description || '',
       isAvailable: true,
-      tenantId: currentUser.tenantId // QUAN TRỌNG: Gửi TenantId lên Server
+      tenantId: currentUser.tenantId
     };
 
     let success;
@@ -130,20 +154,19 @@ export default function MenuManagement() {
     }
 
     if (success) {
-      fetchMenu(currentUser.tenantId); // Refresh lại list theo TenantId
+      fetchMenu(currentUser.tenantId);
       handleCancel();
     }
   };
 
   const handleDelete = async (id) => {
     if (confirm("Xoá món này?")) {
-      // Truyền tenantId vào query param khi xoá để xác thực
       await fetchAPI(SERVICES.MENU, `/api/menu/${id}?tenantId=${currentUser.tenantId}`, { method: 'DELETE' });
       fetchMenu(currentUser.tenantId);
     }
   };
 
-  // Helper form handlers
+  // Helper handlers
   const handleChange = (e) => setNewItem({ ...newItem, [e.target.name]: e.target.value });
   const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
   const handleEditClick = (item) => {
@@ -157,7 +180,6 @@ export default function MenuManagement() {
     setShowForm(false);
   };
   
-  // Logic lọc item hiển thị
   const filteredItems = menuItems.filter(item => {
     if (filters.keyword && !item.name.toLowerCase().includes(filters.keyword.toLowerCase())) return false;
     if (filters.categoryId !== 'all' && item.categoryId !== Number(filters.categoryId)) return false;
@@ -165,14 +187,18 @@ export default function MenuManagement() {
   });
 
   return (
-    // ... (Giữ nguyên phần UI return như file cũ) ...
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'Arial', backgroundColor: '#f4f6f8' }}>
       
       {/* PHẦN 1: DANH SÁCH MENU */}
       <div style={{ flex: 1, padding: 20, overflowY: 'auto', position: 'relative' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
-            <Link href="/" style={{textDecoration:'none', color:'#666', fontSize: 14}}>← Quay lại Dashboard</Link>
+            {/* Nút quay lại điều chỉnh tuỳ theo ngữ cảnh */}
+            {tableId ? (
+               <Link href="/tables" style={{textDecoration:'none', color:'#666', fontSize: 14}}>← Quay lại Sơ đồ bàn</Link>
+            ) : (
+               <Link href="/" style={{textDecoration:'none', color:'#666', fontSize: 14}}>← Quay lại Dashboard</Link>
+            )}
             <h2 style={{margin: '5px 0', color: '#333'}}>🍲 Menu: {currentUser?.tenantName}</h2>
           </div>
           <button onClick={() => setShowForm(!showForm)} style={{ ...btnStyle, backgroundColor: showForm ? '#6c757d' : '#28a745' }}>
@@ -180,10 +206,9 @@ export default function MenuManagement() {
           </button>
         </div>
 
-        {/* ... (Phần Form và List item giữ nguyên như cũ, chỉ cần đảm bảo dùng các hàm handleSave/handleDelete mới ở trên) ... */}
+        {/* FORM THÊM/SỬA */}
         {showForm && (
           <div style={{ padding: 15, backgroundColor: 'white', borderRadius: 8, marginBottom: 20, boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-             {/* ... Nội dung form giữ nguyên ... */}
              <h4 style={{marginTop:0}}>{editingId ? 'Sửa món' : 'Thêm món'}</h4>
              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                <input name="name" value={newItem.name} onChange={handleChange} placeholder="Tên món" style={inputStyle} />
@@ -208,7 +233,7 @@ export default function MenuManagement() {
           </select>
         </div>
 
-        {/* LIST */}
+        {/* LIST ITEM */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 15 }}>
           {filteredItems.map(item => (
             <div key={item.id} style={{ backgroundColor: 'white', borderRadius: 8, overflow: 'hidden', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
@@ -230,9 +255,8 @@ export default function MenuManagement() {
         </div>
       </div>
       
-      {/* PHẦN 2: GIỎ HÀNG (Giữ nguyên UI) */}
+      {/* PHẦN 2: GIỎ HÀNG */}
       <div style={{ width: 350, backgroundColor: 'white', borderLeft: '1px solid #ddd', display: 'flex', flexDirection: 'column', height: '100vh' }}>
-          {/* ... (Copy y nguyên phần render giỏ hàng từ file cũ) ... */}
            <div style={{ padding: 20, backgroundColor: '#2c3e50', color: 'white' }}>
             <h3 style={{ margin: 0 }}>🛒 Đơn Hàng Mới</h3>
             <div style={{ marginTop: 10 }}>
@@ -241,12 +265,11 @@ export default function MenuManagement() {
             </div>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: 15 }}>
-             {/* List item map... */}
              {cart.map(item => (
                 <div key={item.cartId} style={{ borderBottom: '1px solid #eee', paddingBottom: 10, marginBottom: 10 }}>
                    <div style={{fontWeight:'bold'}}>{item.name}</div>
                    <div>{item.price.toLocaleString()} x {item.quantity}</div>
-                   <button onClick={() => removeFromCart(item.cartId)} style={{color:'red'}}>Xoá</button>
+                   <button onClick={() => removeFromCart(item.cartId)} style={{color:'red', border:'none', background:'none', cursor:'pointer', padding:0, fontSize:12, textDecoration:'underline'}}>Xoá</button>
                 </div>
              ))}
           </div>
@@ -256,16 +279,23 @@ export default function MenuManagement() {
           </div>
       </div>
       
-      {/* MODAL ORDER (Giữ nguyên UI) */}
+      {/* MODAL ORDER */}
       {showOrderModal && selectedDish && (
           <div style={modalOverlayStyle}>
             <div style={modalContentStyle}>
                <h3>{selectedDish.name}</h3>
-               {/* ... Input Số lượng, Ghi chú ... */}
-               <textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} rows="3" style={{width:'100%'}} placeholder="Ghi chú..." />
+               <textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} rows="3" style={{width:'100%', marginBottom: 10}} placeholder="Ghi chú..." />
+               
+               <div style={{display:'flex', alignItems:'center', gap: 10, marginBottom: 20}}>
+                  <label>Số lượng:</label>
+                  <button onClick={() => setOrderQty(q => Math.max(1, q - 1))} style={qtyBtnStyle}>-</button>
+                  <span style={{fontWeight:'bold'}}>{orderQty}</span>
+                  <button onClick={() => setOrderQty(q => q + 1)} style={qtyBtnStyle}>+</button>
+               </div>
+
                <div style={{marginTop:10, display:'flex', justifyContent:'flex-end', gap:10}}>
-                 <button onClick={()=>setShowOrderModal(false)}>Huỷ</button>
-                 <button onClick={confirmAddToCart}>Thêm</button>
+                 <button onClick={()=>setShowOrderModal(false)} style={{...btnStyle, backgroundColor: '#6c757d'}}>Huỷ</button>
+                 <button onClick={confirmAddToCart} style={{...btnStyle, backgroundColor: '#28a745'}}>Thêm</button>
                </div>
             </div>
           </div>
@@ -274,9 +304,9 @@ export default function MenuManagement() {
   );
 }
 
-// CSS (Giữ nguyên)
+// CSS
 const inputStyle = { width: '100%', padding: '8px', borderRadius: 4, border: '1px solid #ced4da', boxSizing: 'border-box' };
 const btnStyle = { padding: '8px 15px', border: 'none', borderRadius: 4, cursor: 'pointer', color: 'white', fontWeight: 'bold', fontSize: 14 };
-const qtyBtnStyle = { width: 25, height: 25, borderRadius: '50%', border: '1px solid #ccc', backgroundColor: 'white', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center' };
+const qtyBtnStyle = { width: 30, height: 30, borderRadius: '50%', border: '1px solid #ccc', backgroundColor: 'white', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize: 16 };
 const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
 const modalContentStyle = { backgroundColor: 'white', padding: 20, borderRadius: 8, width: '90%', maxWidth: 400, boxShadow: '0 5px 15px rgba(0,0,0,0.3)' };

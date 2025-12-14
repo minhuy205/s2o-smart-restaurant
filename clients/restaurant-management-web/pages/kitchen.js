@@ -1,19 +1,24 @@
 // clients/restaurant-management-web/pages/kitchen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
 import Link from 'next/link';
 
 export default function KitchenDisplaySystem() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Dùng useRef để lưu tenantId để truy cập được bên trong setInterval
+  const tenantIdRef = useRef(null);
 
   // Hàm tải đơn hàng từ Backend
   const fetchOrders = async () => {
+    const tenantId = tenantIdRef.current;
+    if (!tenantId) return;
+
     try {
-      const data = await fetchAPI(SERVICES.ORDER, '/api/orders');
+      // TRUYỀN TENANT ID VÀO API
+      const data = await fetchAPI(SERVICES.ORDER, `/api/orders?tenantId=${tenantId}`);
       if (data) {
-        // Chỉ lấy các đơn đang chờ hoặc đang nấu
-        // Sắp xếp theo thời gian: Đơn cũ nhất lên đầu (FIFO)
         const activeOrders = data
           .filter(o => o.status !== 'Paid' && o.status !== 'Completed')
           .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -26,21 +31,35 @@ export default function KitchenDisplaySystem() {
     setLoading(false);
   };
 
-  // Tự động refresh dữ liệu mỗi 5 giây
   useEffect(() => {
-    fetchOrders(); // Gọi lần đầu
-    const interval = setInterval(fetchOrders, 5000); // Lặp lại
-    return () => clearInterval(interval); // Dọn dẹp khi thoát trang
+    // 1. Lấy TenantId khi vừa vào trang
+    const userStr = localStorage.getItem('s2o_user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      tenantIdRef.current = user.tenantId; // Lưu vào Ref
+      
+      // 2. Gọi fetch ngay lập tức
+      fetchOrders();
+    } else {
+      alert("Vui lòng đăng nhập!");
+      window.location.href = "/";
+    }
+
+    // 3. Cài đặt interval (dùng tenantId từ Ref nên không sợ closure cũ)
+    const interval = setInterval(fetchOrders, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Hàm xử lý chuyển trạng thái
   const updateStatus = async (orderId, newStatus) => {
-    await fetchAPI(SERVICES.ORDER, `/api/orders/${orderId}/status?status=${newStatus}`, {
+    if (!tenantIdRef.current) return;
+    
+    await fetchAPI(SERVICES.ORDER, `/api/orders/${orderId}/status?status=${newStatus}&tenantId=${tenantIdRef.current}`, {
       method: 'PUT'
     });
-    fetchOrders(); // Tải lại ngay lập tức
+    fetchOrders();
   };
 
+  // ... (Phần return giao diện giữ nguyên như cũ) ...
   return (
     <div style={{ padding: 20, fontFamily: 'Arial', backgroundColor: '#222', minHeight: '100vh', color: 'white' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -50,94 +69,33 @@ export default function KitchenDisplaySystem() {
         </div>
         <button onClick={fetchOrders} style={{padding: '10px 20px', cursor: 'pointer', backgroundColor: '#3498db', color:'white', border:'none', borderRadius: 4, fontWeight:'bold'}}>🔄 Làm mới</button>
       </div>
-
+      
+      {/* ... Phần hiển thị danh sách đơn hàng (giống file cũ) ... */}
       {loading ? <p>Đang tải vé...</p> : (
         <div style={{ display: 'flex', gap: 15, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          {orders.length === 0 && (
-            <div style={{width: '100%', textAlign: 'center', marginTop: 50, color: '#666'}}>
-              <h3>Chưa có món nào cần làm... 😴</h3>
-            </div>
-          )}
-
+          {orders.length === 0 && <div style={{width: '100%', textAlign: 'center', marginTop: 50, color: '#666'}}><h3>Chưa có món nào cần làm... 😴</h3></div>}
           {orders.map(order => (
-            <div key={order.id} style={{ 
-              backgroundColor: order.status === 'Cooking' ? '#e6f7ff' : '#fff',
-              color: 'black',
-              width: 320, 
-              borderRadius: 8, 
-              overflow: 'hidden',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              border: order.status === 'Cooking' ? '4px solid #1890ff' : 'none',
-              animation: 'fadeIn 0.5s'
-            }}>
-              {/* Header của Ticket */}
-              <div style={{ 
-                backgroundColor: order.status === 'Cooking' ? '#1890ff' : '#e0e0e0', 
-                color: order.status === 'Cooking' ? 'white' : '#333',
-                padding: '12px 15px', 
-                display: 'flex', 
-                justifyContent: 'space-between',
-                fontWeight: 'bold',
-                alignItems: 'center'
-              }}>
-                <span style={{fontSize: 18}}>#{order.id} - {order.tableName}</span>
+            <div key={order.id} style={{ backgroundColor: order.status === 'Cooking' ? '#e6f7ff' : '#fff', color: 'black', width: 320, borderRadius: 8, overflow: 'hidden', border: order.status === 'Cooking' ? '4px solid #1890ff' : 'none', marginBottom: 20 }}>
+              <div style={{ backgroundColor: order.status === 'Cooking' ? '#1890ff' : '#e0e0e0', color: order.status === 'Cooking' ? 'white' : '#333', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                <span>#{order.id} - {order.tableName}</span>
                 <span style={{fontSize: 14}}>{new Date(order.createdAt).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})}</span>
               </div>
-
-              {/* Danh sách món */}
               <div style={{ padding: 15 }}>
                 <ul style={{ paddingLeft: 0, margin: 0, listStyle: 'none' }}>
                   {order.items.map((item, idx) => (
-                    <li key={idx} style={{ 
-                      marginBottom: 10, 
-                      fontSize: 18, 
-                      paddingBottom: 8, 
-                      borderBottom: idx !== order.items.length - 1 ? '1px solid #eee' : 'none' 
-                    }}>
-                      <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                        <span style={{fontWeight: 'bold'}}>{item.menuItemName}</span>
-                        <span style={{fontWeight: 'bold', color: '#d35400', backgroundColor: '#fce4ec', padding: '2px 8px', borderRadius: 10}}>x{item.quantity}</span>
+                    <li key={idx} style={{ marginBottom: 10, borderBottom: '1px solid #eee', paddingBottom: 5 }}>
+                      <div style={{display:'flex', justifyContent:'space-between', fontWeight:'bold'}}>
+                        <span>{item.menuItemName}</span>
+                        <span style={{color: '#d35400'}}>x{item.quantity}</span>
                       </div>
-
-                      {/* --- HIỂN THỊ GHI CHÚ TẠI ĐÂY (ITEM LEVEL) --- */}
-                      {item.note && (
-                        <div style={{ 
-                          marginTop: 4, 
-                          color: '#c0392b', 
-                          fontStyle: 'italic', 
-                          fontWeight: 'bold',
-                          fontSize: 15,
-                          display: 'flex',
-                          alignItems: 'center',
-                          backgroundColor: '#fff0f0',
-                          padding: '4px 8px',
-                          borderRadius: 4
-                        }}>
-                          ⚠️ {item.note}
-                        </div>
-                      )}
+                      {item.note && <div style={{color:'red', fontStyle:'italic', fontSize: 14}}>⚠️ {item.note}</div>}
                     </li>
                   ))}
                 </ul>
               </div>
-
-              {/* Footer hành động */}
-              <div style={{ padding: 10, borderTop: '1px solid #eee', display: 'flex', gap: 10 }}>
-                {order.status === 'Pending' && (
-                  <button 
-                    onClick={() => updateStatus(order.id, 'Cooking')}
-                    style={{ flex: 1, padding: 12, backgroundColor: '#0984e3', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight:'bold', fontSize: 16 }}>
-                    🔥 Nhận đơn (Nấu)
-                  </button>
-                )}
-                
-                {order.status === 'Cooking' && (
-                  <button 
-                    onClick={() => updateStatus(order.id, 'Completed')}
-                    style={{ flex: 1, padding: 12, backgroundColor: '#00b894', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight:'bold', fontSize: 16 }}>
-                    ✅ Xong món
-                  </button>
-                )}
+              <div style={{ padding: 10, display: 'flex', gap: 10 }}>
+                {order.status === 'Pending' && <button onClick={() => updateStatus(order.id, 'Cooking')} style={{flex: 1, padding: 10, backgroundColor: '#0984e3', color:'white', border:'none', borderRadius: 4, cursor:'pointer'}}>🔥 Nấu</button>}
+                {order.status === 'Cooking' && <button onClick={() => updateStatus(order.id, 'Completed')} style={{flex: 1, padding: 10, backgroundColor: '#00b894', color:'white', border:'none', borderRadius: 4, cursor:'pointer'}}>✅ Xong</button>}
               </div>
             </div>
           ))}

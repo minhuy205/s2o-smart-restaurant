@@ -1,84 +1,113 @@
-order_db
--- 1. Xóa bảng cũ trước để cập nhật cấu trúc mới (Quan trọng)
+-- KẾT NỐI VÀO DATABASE: order_db
+
+-- 1. Xóa bảng cũ nếu có (Để reset lại từ đầu)
 DROP TABLE IF EXISTS "OrderItems";
 DROP TABLE IF EXISTS "Orders";
 
--- 2. Tạo bảng Orders (Giữ nguyên)
+-- 2. Tạo bảng Đơn hàng (Orders)
 CREATE TABLE "Orders" (
     "Id" SERIAL PRIMARY KEY,
-    "TableName" TEXT,
-    "TotalAmount" DECIMAL(18,2),
-    "Status" TEXT,
-    "CreatedAt" TIMESTAMP
+    "TableName" VARCHAR(100) NOT NULL,    -- Tên bàn hoặc tên khách
+    "TotalAmount" DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    "Status" VARCHAR(50) DEFAULT 'Pending', -- Trạng thái: Pending, Cooking, Completed, Paid
+    "TenantId" INT NOT NULL DEFAULT 0,    -- QUAN TRỌNG: Mã nhà hàng
+    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Tạo bảng OrderItems (Đã thêm cột Note)
+-- 3. Tạo bảng Chi tiết đơn hàng (OrderItems)
 CREATE TABLE "OrderItems" (
     "Id" SERIAL PRIMARY KEY,
-    "MenuItemName" TEXT,
-    "Price" DECIMAL(18,2),
-    "Quantity" INTEGER,
-    "OrderId" INTEGER REFERENCES "Orders"("Id"),
-    
-    "Note" TEXT -- <--- Đã thêm phần này
+    "MenuItemName" VARCHAR(200) NOT NULL, -- Tên món (Lưu cứng tên tại thời điểm đặt)
+    "Price" DECIMAL(18, 2) NOT NULL,      -- Giá tiền (Lưu cứng giá tại thời điểm đặt)
+    "Quantity" INT NOT NULL DEFAULT 1,
+    "Note" TEXT NULL,                     -- Ghi chú cho bếp (VD: Không hành)
+    "OrderId" INT NOT NULL,               -- Khoá ngoại trỏ về bảng Orders
+
+    -- Tạo liên kết khoá ngoại
+    CONSTRAINT fk_order
+      FOREIGN KEY ("OrderId") 
+      REFERENCES "Orders"("Id")
+      ON DELETE CASCADE -- Xoá đơn thì xoá luôn chi tiết món
 );
 
--- 4. Thêm dữ liệu mẫu để test
-INSERT INTO "Orders" ("TableName", "TotalAmount", "Status", "CreatedAt") 
-VALUES ('Bàn 1', 55000, 'Pending', NOW());
+-- 4. Tạo Index để tìm kiếm nhanh theo Nhà hàng (TenantId)
+CREATE INDEX "IX_Orders_TenantId" ON "Orders" ("TenantId");
 
--- Thêm món kèm ghi chú
-INSERT INTO "OrderItems" ("MenuItemName", "Price", "Quantity", "OrderId", "Note")
-VALUES ('Phở Bò Tái', 55000, 1, 1, 'Không hành, nhiều nước béo');
+-- 5. Thêm dữ liệu mẫu (Seeding Data) cho 'Nhà Hàng Demo' (TenantId = 1)
+-- Tạo 1 đơn hàng mẫu đang chờ nấu
+INSERT INTO "Orders" ("TableName", "TotalAmount", "Status", "TenantId", "CreatedAt")
+VALUES ('Bàn 1 (Demo)', 150000, 'Pending', 1, NOW());
+
+-- Thêm món vào đơn hàng vừa tạo (Lấy Id đơn hàng mới nhất)
+INSERT INTO "OrderItems" ("MenuItemName", "Price", "Quantity", "Note", "OrderId")
+VALUES 
+('Phở Bò Tái', 55000, 2, 'Không hành', (SELECT "Id" FROM "Orders" ORDER BY "Id" DESC LIMIT 1)),
+('Trà Đá', 5000, 4, '', (SELECT "Id" FROM "Orders" ORDER BY "Id" DESC LIMIT 1));
 
 
--- Dành cho PostgreSQL (Database: menu_db)
+-- KẾT NỐI VÀO DATABASE: menu_db
 
--- 1. Xóa bảng cũ nếu có (để reset)
+-- 1. Xóa bảng cũ nếu muốn reset (Cẩn thận mất dữ liệu cũ)
 DROP TABLE IF EXISTS "MenuItems";
 DROP TABLE IF EXISTS "Categories";
 
--- 2. Tạo bảng Danh mục (Categories)
+-- 2. Tạo bảng Danh mục
 CREATE TABLE "Categories" (
     "Id" SERIAL PRIMARY KEY,
     "Name" VARCHAR(100) NOT NULL
 );
 
--- 3. Tạo bảng Món ăn (MenuItems)
+-- 3. Tạo bảng Món ăn (CÓ THÊM TenantId)
 CREATE TABLE "MenuItems" (
     "Id" SERIAL PRIMARY KEY,
     "Name" VARCHAR(200) NOT NULL,
     "Price" DECIMAL(18, 2) NOT NULL,
     "CategoryId" INT NOT NULL,
-    "Description" TEXT NULL,     -- Mô tả món ăn
-    "ImageUrl" TEXT NULL,        -- Link ảnh
+    "Description" TEXT NULL,
+    "ImageUrl" TEXT NULL,
     "IsAvailable" BOOLEAN DEFAULT TRUE,
+    "TenantId" INT NOT NULL DEFAULT 0, -- Cột mới: Định danh nhà hàng
     "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    -- Khóa ngoại liên kết với bảng Categories
-    CONSTRAINT fk_category
-      FOREIGN KEY ("CategoryId") 
-      REFERENCES "Categories"("Id")
-      ON DELETE SET NULL
+    
+    CONSTRAINT fk_category FOREIGN KEY ("CategoryId") REFERENCES "Categories"("Id") ON DELETE SET NULL
 );
 
--- 4. Thêm dữ liệu mẫu (Seeding Data)
+-- Tạo Index để tìm kiếm nhanh hơn theo TenantId
+CREATE INDEX "IX_MenuItems_TenantId" ON "MenuItems" ("TenantId");
 
--- Thêm danh mục
+-- 4. Thêm dữ liệu mẫu
+-- Danh mục (Dùng chung cho đơn giản, hoặc có thể thêm TenantId nếu muốn)
 INSERT INTO "Categories" ("Name") VALUES 
-('Món nước'),    -- Id 1
-('Món khô'),     -- Id 2
-('Đồ uống'),     -- Id 3
-('Tráng miệng'), -- Id 4
-('Khác');        -- Id 5
+('Món nước'), ('Món khô'), ('Đồ uống'), ('Tráng miệng'), ('Khác');
 
--- Thêm món ăn mẫu
-INSERT INTO "MenuItems" ("Name", "Price", "CategoryId", "Description", "ImageUrl", "IsAvailable") VALUES 
-('Phở Bò Tái', 55000, 1, 'Phở bò tái truyền thống, nước dùng hầm xương 24h', 'https://i.imgur.com/example1.jpg', TRUE),
-('Cơm Tấm Sườn Bì', 60000, 2, 'Sườn nướng mật ong, bì thính nhà làm', 'https://i.imgur.com/example2.jpg', TRUE),
-('Trà Đào Cam Sả', 35000, 3, 'Trà đào tươi mát lạnh', 'https://i.imgur.com/example3.jpg', TRUE),
-('Bánh Flan', 15000, 4, 'Bánh flan caramen béo ngậy', 'https://i.imgur.com/example4.jpg', TRUE);
+-- Món ăn mẫu (Gán cho TenantId = 1, tức là 'Nhà Hàng Demo')
+INSERT INTO "MenuItems" ("Name", "Price", "CategoryId", "Description", "ImageUrl", "IsAvailable", "TenantId") VALUES 
+('Phở Bò Tái', 55000, 1, 'Phở bò tái truyền thống', 'https://via.placeholder.com/150', TRUE, 1),
+('Cơm Tấm Sườn', 60000, 2, 'Sườn nướng mật ong', 'https://via.placeholder.com/150', TRUE, 1),
+('Trà Đào', 35000, 3, 'Trà đào cam sả', 'https://via.placeholder.com/150', TRUE, 1);
 
+-- KẾT NỐI VÀO DATABASE: menu_db
+
+-- 1. Tạo bảng Tables (Bàn ăn)
+CREATE TABLE IF NOT EXISTS "Tables" (
+    "Id" SERIAL PRIMARY KEY,
+    "Name" VARCHAR(50) NOT NULL,          -- Tên bàn (VD: Bàn 1, Bàn VIP)
+    "Status" VARCHAR(20) DEFAULT 'Available', -- Trạng thái: Available (Trống), Occupied (Đang phục vụ)
+    "CurrentOrderId" INT NULL,            -- ID đơn hàng hiện tại (Lấy từ order_db)
+    "TenantId" INT NOT NULL DEFAULT 0,    -- Mã nhà hàng
+    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Tạo Index
+CREATE INDEX "IX_Tables_TenantId" ON "Tables" ("TenantId");
+
+-- 3. Thêm dữ liệu mẫu cho 'Nhà Hàng Demo' (TenantId = 1)
+INSERT INTO "Tables" ("Name", "Status", "TenantId") VALUES 
+('Bàn 1', 'Available', 1),
+('Bàn 2', 'Available', 1),
+('Bàn 3', 'Available', 1),
+('Bàn 4', 'Available', 1),
+('Bàn VIP 1', 'Available', 1);
 
 -- ================================================================
 
