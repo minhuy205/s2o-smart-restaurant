@@ -81,55 +81,95 @@ INSERT INTO "MenuItems" ("Name", "Price", "CategoryId", "Description", "ImageUrl
 
 
 -- ================================================================
--- DATABASE: s2o_auth_db
+
+-- DATABASE: auth_db
+
+-- MÔ TẢ: Script tạo bảng và thêm dữ liệu mẫu (Pizza Company)
+
+-- MẬT KHẨU CHO TẤT CẢ TÀI KHOẢN LÀ: 123456
+
 -- ================================================================
 
--- 1. Tạo bảng Tenants (Doanh nghiệp)
+
+
+-- 1. TẠO BẢNG TENANTS (QUÁN ĂN)
+
 CREATE TABLE IF NOT EXISTS "Tenants" (
+
     "Id" SERIAL PRIMARY KEY,
+
     "Name" TEXT NOT NULL,
+
     "Address" TEXT,
-    "LogoUrl" TEXT,
-    "IsActive" BOOLEAN NOT NULL DEFAULT TRUE,
-    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+    "IsActive" BOOLEAN DEFAULT TRUE,
+
+    "CreatedAt" TIMESTAMP DEFAULT NOW()
+
 );
 
--- 2. Tạo bảng Users (Người dùng)
+
+
+-- 2. TẠO BẢNG USERS (NGƯỜI DÙNG)
+
+-- Đã bao gồm sẵn cột PhoneNumber và Points
+
 CREATE TABLE IF NOT EXISTS "Users" (
+
     "Id" SERIAL PRIMARY KEY,
-    "Username" TEXT NOT NULL UNIQUE,
+
+    "Username" TEXT NOT NULL,
+
     "PasswordHash" TEXT NOT NULL,
+
     "FullName" TEXT,
-    "Role" TEXT NOT NULL, -- 'Admin', 'Owner', 'Customer'
-    "TenantId" INTEGER,   -- Link tới bảng Tenants
-    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "FK_Users_Tenants_TenantId" 
-        FOREIGN KEY ("TenantId") 
-        REFERENCES "Tenants" ("Id") 
-        ON DELETE SET NULL
-);
+    "Role" TEXT NOT NULL,
 
--- 3. Index
-CREATE INDEX IF NOT EXISTS "IX_Users_Username" ON "Users" ("Username");
-CREATE INDEX IF NOT EXISTS "IX_Users_TenantId" ON "Users" ("TenantId");
+    "PhoneNumber" TEXT,          -- Cột bạn yêu cầu
 
--- ================================================================
--- DATA MẪU (SEED DATA)
--- ================================================================
+    "Points" INTEGER DEFAULT 0,  -- Cột bạn yêu cầu
 
--- Tạo 1 Quán mẫu
-INSERT INTO "Tenants" ("Name", "Address", "IsActive")
-VALUES ('S2O Restaurant', '123 Đường Demo, TP.HCM', TRUE);
+    "TenantId" INTEGER REFERENCES "Tenants"("Id"),
 
--- Tạo User Admin (Quản trị hệ thống)
-INSERT INTO "Users" ("Username", "PasswordHash", "FullName", "Role", "TenantId")
-VALUES ('admin', '$2a$11$ExampleHash...', 'System Administrator', 'Admin', NULL);
+    "CreatedAt" TIMESTAMP DEFAULT NOW()
 
--- Tạo User Chủ quán (Của quán ID=1)
-INSERT INTO "Users" ("Username", "PasswordHash", "FullName", "Role", "TenantId")
-VALUES ('owner1', '$2a$11$ExampleHash...', 'Chủ Quán S2O', 'Owner', 1);
+);-- 1. Tạo một Quán ăn mẫu (Để gán cho Owner)
 
--- Tạo User Khách (Mobile App)
-INSERT INTO "Users" ("Username", "PasswordHash", "FullName", "Role", "TenantId")
-VALUES ('guest_mobile', '$2a$11$ExampleHash...', 'Khách Hàng Mobile', 'Customer', NULL);
+INSERT INTO "Tenants" ("Name", "Address", "IsActive", "CreatedAt")
+
+VALUES ('Nhà Hàng Demo', '123 Đường Mẫu, TP.HCM', true, NOW());
+
+
+
+-- 2. Tạo 2 tài khoản ADMIN (Không thuộc quán nào - TenantId là NULL)
+
+INSERT INTO "Users" ("Username", "PasswordHash", "FullName", "Role", "TenantId", "PhoneNumber", "Points", "CreatedAt")
+
+VALUES 
+
+('admin1', '$2a$11$s4y4.s5.s5.s5.s5.u5.s5.s5.s5.s5.s5.s5.s5.s5.s5.s5.s5.', 'Admin Chính', 'Admin', NULL, '0901000001', 0, NOW()),
+
+('admin2', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Admin Phụ', 'Admin', NULL, '0901000002', 0, NOW());
+
+-- (Mật khẩu admin2 là 123456. Hash của admin1 là demo, nếu không được hãy dùng admin2)
+
+
+
+-- 3. Tạo 1 tài khoản OWNER (Chủ quán - Gán vào quán 'Nhà Hàng Demo' vừa tạo ở trên)
+
+INSERT INTO "Users" ("Username", "PasswordHash", "FullName", "Role", "TenantId", "PhoneNumber", "Points", "CreatedAt")
+
+VALUES 
+
+('owner_demo', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Chủ Quán Demo', 'Owner', (SELECT "Id" FROM "Tenants" WHERE "Name" = 'Nhà Hàng Demo' LIMIT 1), '0909999999', 0, NOW());
+
+
+
+-- 4. Tạo 1 tài khoản KHÁCH HÀNG (Customer - Thường không quản lý quán nào)
+
+INSERT INTO "Users" ("Username", "PasswordHash", "FullName", "Role", "TenantId", "PhoneNumber", "Points", "CreatedAt")
+
+VALUES 
+
+('khachhang1', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Khách VIP', 'Customer', NULL, '0908888888', 100, NOW());

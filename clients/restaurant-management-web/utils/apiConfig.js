@@ -2,14 +2,16 @@
 
 export const API_BASE_URLS = {
   MENU_SERVICE: "http://localhost:7002",
-  ORDER_PAYMENT_SERVICE: "http://localhost:7003", // Đảm bảo dòng này đúng cổng 7003
+  ORDER_PAYMENT_SERVICE: "http://localhost:7003",
   RESERVATION_SERVICE: "http://localhost:7004",
+  TENANT_AUTH_SERVICE: "http://localhost:7001", // Thêm dòng này
 };
 
 export const SERVICES = {
   MENU: 'MENU_SERVICE',
   ORDER: 'ORDER_PAYMENT_SERVICE',
-  RESERVATION: 'RESERVATION_SERVICE'
+  RESERVATION: 'RESERVATION_SERVICE',
+  AUTH: 'TENANT_AUTH_SERVICE' // Thêm dòng này
 };
 
 export const fetchAPI = async (service, endpoint, options = {}) => {

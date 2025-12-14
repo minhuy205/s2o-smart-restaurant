@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TenantAuthService")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5c8d474ce0af2390998a2e19c6b9aea05d585623")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c8a4a54e5bf5752d0f8c4530231cab20a3c308bd")]
 [assembly: System.Reflection.AssemblyProductAttribute("TenantAuthService")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TenantAuthService")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

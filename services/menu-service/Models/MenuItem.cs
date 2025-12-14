@@ -15,4 +15,7 @@ public class MenuItem
     public string? ImageUrl { get; set; }
     public int CategoryId { get; set; }
     public bool IsAvailable { get; set; } = true;
+    
+    // Thêm TenantId để phân biệt nhà hàng
+    public int TenantId { get; set; }
 }

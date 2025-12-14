@@ -1,28 +1,26 @@
 {
   "format": 1,
   "restore": {
-    "D:\\S20-smart-restaurant\\huhu\\s2o-smart-restaurant\\services\\order-payment-service\\OrderPaymentService.csproj": {}
+    "/Users/leminhhuy/Documents/GitHub/s2o-smart-restaurant/services/order-payment-service/OrderPaymentService.csproj": {}
   },
   "projects": {
-    "D:\\S20-smart-restaurant\\huhu\\s2o-smart-restaurant\\services\\order-payment-service\\OrderPaymentService.csproj": {
+    "/Users/leminhhuy/Documents/GitHub/s2o-smart-restaurant/services/order-payment-service/OrderPaymentService.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\S20-smart-restaurant\\huhu\\s2o-smart-restaurant\\services\\order-payment-service\\OrderPaymentService.csproj",
+        "projectUniqueName": "/Users/leminhhuy/Documents/GitHub/s2o-smart-restaurant/services/order-payment-service/OrderPaymentService.csproj",
         "projectName": "OrderPaymentService",
-        "projectPath": "D:\\S20-smart-restaurant\\huhu\\s2o-smart-restaurant\\services\\order-payment-service\\OrderPaymentService.csproj",
-        "packagesPath": "C:\\Users\\myrah\\.nuget\\packages\\",
-        "outputPath": "D:\\S20-smart-restaurant\\huhu\\s2o-smart-restaurant\\services\\order-payment-service\\obj\\",
+        "projectPath": "/Users/leminhhuy/Documents/GitHub/s2o-smart-restaurant/services/order-payment-service/OrderPaymentService.csproj",
+        "packagesPath": "/Users/leminhhuy/.nuget/packages/",
+        "outputPath": "/Users/leminhhuy/Documents/GitHub/s2o-smart-restaurant/services/order-payment-service/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\myrah\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/Users/leminhhuy/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
+          "/usr/local/share/dotnet/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -76,7 +74,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.400/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.416/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
