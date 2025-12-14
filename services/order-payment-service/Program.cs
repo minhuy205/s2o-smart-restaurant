@@ -1,14 +1,10 @@
-// var builder = WebApplication.CreateBuilder(args);
-// var app = builder.Build();
-// app.MapGet("/", () => "Order & Payment Service - S2O");
-// app.Run();
 using Microsoft.EntityFrameworkCore;
 using OrderPaymentService.Data;
 using OrderPaymentService.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Kết nối Database (Dùng chung DB s2o_db với Menu Service) // SỬA THÀNH (Đổi s2o_db -> oder_db):
+// Kết nối Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? "Host=postgres;Port=5432;Database=order_db;Username=s2o;Password=h9minhhuy";
 
@@ -26,25 +22,43 @@ app.UseCors("AllowAll");
 
 // --- CÁC API ---
 
-// 1. Lấy tất cả đơn hàng (Kèm theo món ăn bên trong)
-app.MapGet("/api/orders", async (AppDbContext db) =>
-    await db.Orders.Include(o => o.Items).OrderByDescending(o => o.CreatedAt).ToListAsync());
+// 1. Lấy tất cả đơn hàng (LỌC THEO TENANT)
+// Gọi: GET /api/orders?tenantId=1
+app.MapGet("/api/orders", async (int tenantId, AppDbContext db) =>
+{
+    if (tenantId <= 0) return Results.BadRequest("Missing TenantId");
 
-// 2. Tạo đơn hàng mới
+    var orders = await db.Orders
+        .Include(o => o.Items)
+        .Where(o => o.TenantId == tenantId) // Chỉ lấy đơn của quán này
+        .OrderByDescending(o => o.CreatedAt)
+        .ToListAsync();
+        
+    return Results.Ok(orders);
+});
+
+// 2. Tạo đơn hàng mới (NHẬN TENANT ID TỪ FE)
 app.MapPost("/api/orders", async (Order order, AppDbContext db) =>
 {
+    if (order.TenantId <= 0) return Results.BadRequest("Invalid TenantId");
+
     order.CreatedAt = DateTime.UtcNow;
-    order.Status = "Pending"; // Mặc định là chờ nấu
+    order.Status = "Pending";
+    
     db.Orders.Add(order);
     await db.SaveChangesAsync();
     return Results.Created($"/api/orders/{order.Id}", order);
 });
 
-// 3. Cập nhật trạng thái (VD: Pending -> Cooking -> Paid)
-app.MapPut("/api/orders/{id}/status", async (int id, string status, AppDbContext db) =>
+// 3. Cập nhật trạng thái
+// Gọi: PUT /api/orders/{id}/status?status=...&tenantId=...
+app.MapPut("/api/orders/{id}/status", async (int id, string status, int tenantId, AppDbContext db) =>
 {
     var order = await db.Orders.FindAsync(id);
     if (order is null) return Results.NotFound();
+
+    // Bảo mật: Kiểm tra đơn này có đúng của quán đang đăng nhập không
+    if (order.TenantId != tenantId && tenantId > 0) return Results.Unauthorized();
 
     order.Status = status;
     await db.SaveChangesAsync();
