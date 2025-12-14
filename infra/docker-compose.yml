@@ -20,7 +20,11 @@ services:
     build: ../services/tenant-auth-service
     container_name: tenant-auth-service
     ports:
-      - "7001:80"
+      - "7001:8080"
+    depends_on:      # <-- Thêm dòng này: Đợi DB chạy xong mới chạy Service
+      - postgres
+    env_file:        # <--- THÊM DÒNG NÀY
+      - .env         # <--- THÊM DÒNG NÀY (Trỏ vào file .env trong cùng thư mục infra)
   menu-service:
     build: ../services/menu-service
     container_name: menu-service
