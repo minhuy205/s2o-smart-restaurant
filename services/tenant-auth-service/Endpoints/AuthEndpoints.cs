@@ -90,6 +90,14 @@ public static class AuthEndpoints
                 TenantName = tenantName
             });
         });
+
+        // --- 3. Lấy thông tin Tenant theo ID ---
+        app.MapGet("/api/tenants/{id:int}", async (AuthDbContext db, int id) =>
+        {
+            var tenant = await db.Tenants.FindAsync(id);
+            if (tenant == null) return Results.NotFound();
+            return Results.Ok(new { id = tenant.Id, name = tenant.Name, address = tenant.Address, logoUrl = tenant.LogoUrl });
+        });
     }
 
     private static string GenerateJwtToken(User user, IConfiguration config)
