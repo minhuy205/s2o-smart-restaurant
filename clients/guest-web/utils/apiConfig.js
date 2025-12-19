@@ -2,15 +2,15 @@
 
 export const API_BASE_URLS = {
     // Lưu ý: Các port này phải khớp với docker-compose.yml
-    MENU_SERVICE: "http://localhost:7002",
-    ORDER_PAYMENT_SERVICE: "http://localhost:7003",
-    TENANT_AUTH_SERVICE: "http://localhost:7001",
+    AUTH_SERVICE: "http://localhost:8000/auth",
+    MENU_SERVICE: "http://localhost:8000/menu",
+    ORDER_SERVICE: "http://localhost:8000/order",
   };
   
   export const SERVICES = {
+    AUTH: 'AUTH_SERVICE',
     MENU: 'MENU_SERVICE',
-    ORDER: 'ORDER_PAYMENT_SERVICE',
-    AUTH: 'TENANT_AUTH_SERVICE',
+    ORDER: 'ORDER_SERVICE',
   };
 
 // clients/guest-web/utils/apiConfig.js

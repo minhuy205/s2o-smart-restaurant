@@ -2,9 +2,9 @@
 
 export const API_BASE_URLS = {
     // Port 7001 là port của Tenant Auth Service (Cần cấu hình trong docker-compose)
-    AUTH_SERVICE: "http://localhost:7001",
-    MENU_SERVICE: "http://localhost:7002",
-    ORDER_SERVICE: "http://localhost:7003",
+    AUTH_SERVICE: "http://localhost:8000/auth",
+    MENU_SERVICE: "http://localhost:8000/menu",
+    ORDER_SERVICE: "http://localhost:8000/order",
   };
   
   export const SERVICES = {

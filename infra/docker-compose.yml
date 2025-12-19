@@ -1,6 +1,7 @@
 version: "3.9"
+
 services:
-# 1. THÊM SERVICE POSTGRES VÀO ĐẦU DANH SÁCH
+  # 1. DATABASE
   postgres:
     image: postgres:15-alpine
     container_name: postgres
@@ -15,44 +16,64 @@ services:
     restart: always
     env_file:
       - .env
-# 2. CẬP NHẬT SERVICE KHÁC ĐỂ KẾT NỐI ĐẾN POSTGRES
+
+  # 2. API GATEWAY (ĐIỂM TRUY CẬP CHÍNH)
+  api-gateway:
+    build: ../services/api-gateway
+    container_name: api-gateway
+    ports:
+      - "8000:8080"
+    depends_on:
+      - tenant-auth-service
+      - menu-service
+      - order-payment-service
+    restart: always
+
+  # 3. CÁC MICROSERVICES
   tenant-auth-service:
     build: ../services/tenant-auth-service
     container_name: tenant-auth-service
+    # Có thể đóng port 7001 nếu muốn bắt buộc đi qua Gateway
     ports:
-      - "7001:8080"
-    depends_on:      # <-- Thêm dòng này: Đợi DB chạy xong mới chạy Service
+      - "7001:8080" 
+    depends_on:
       - postgres
-    env_file:        # <--- THÊM DÒNG NÀY
-      - .env         # <--- THÊM DÒNG NÀY (Trỏ vào file .env trong cùng thư mục infra)
+    env_file:
+      - .env
+
   menu-service:
     build: ../services/menu-service
     container_name: menu-service
     ports:
       - "7002:8080"
-    depends_on:      # <-- Thêm dòng này: Đợi DB chạy xong mới chạy Service
+    depends_on:
       - postgres
-    env_file:        # <--- THÊM DÒNG NÀY
-      - .env         # <--- THÊM DÒNG NÀY (Trỏ vào file .env trong cùng thư mục infra)
+    env_file:
+      - .env
+
   order-payment-service:
     build: ../services/order-payment-service
     container_name: order-payment-service
     ports:
       - "7003:8080"
-    depends_on:            # <--- THÊM dependency
+    depends_on:
       - postgres
     env_file:
       - .env
+
   customer-reservation-service:
     build: ../services/customer-reservation-service
     container_name: customer-reservation-service
     ports:
       - "7004:80"
+
   ai-service:
     build: ../services/ai-service
     container_name: ai-service
     ports:
       - "7005:5000"
+
+  # CÁC FRONTEND (ĐỂ COMMENT NẾU CHƯA DÙNG)
   # admin-web:
   #   build: ../clients/admin-web
   #   container_name: admin-web
@@ -70,8 +91,6 @@ services:
   #   build: ../clients/customer-mobile-app
   #   ports:
   #     - "3004:3000"
-# env_file:
-#   - ../infra/.env
+
 volumes:
   postgres_data:
-  # nên sửa 80 thành 8080 cho đồng bộ với các service khác
