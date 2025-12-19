@@ -1,59 +1,141 @@
-// pages/index.js - Trang Landing Page
-import React from 'react';
-import { useRouter } from 'next/router';
+"use client"
+import { useRouter } from "next/router"
+
 
 export default function LandingPage() {
-  const router = useRouter();
+  const router = useRouter()
 
   return (
-    <div style={styles.container}>
-      {/* Thanh điều hướng đơn giản */}
-      <nav style={styles.nav}>
-        <div style={styles.logo}>S2O RESTAURANT</div>
-        <div style={styles.navLinks}>
-          <button onClick={() => router.push('/login')} style={styles.btnLogin}>Đăng Nhập</button>
-          <button onClick={() => router.push('/register')} style={styles.btnRegister}>Đăng Ký</button>
+    <div className="landing-container">
+      {/* Navigation */}
+      <nav className="landing-nav">
+        <div className="landing-logo">
+          <span className="landing-logo-accent">S2O</span> RESTAURANT
+        </div>
+        <div className="landing-nav-links">
+          <button onClick={() => router.push("/login")} className="landing-btn-login">
+            Đăng Nhập
+          </button>
+          <button onClick={() => router.push("/register")} className="landing-btn-register">
+            Đăng Ký Ngay
+          </button>
         </div>
       </nav>
 
-      {/* Phần nội dung chính (Hero Section) */}
-      <main style={styles.hero}>
-        <h1 style={styles.title}>Quản Lý Nhà Hàng Thông Minh</h1>
-        <p style={styles.subtitle}>
-            Giải pháp toàn diện kết nối Bếp - Thu Ngân - Khách Hàng.
-            <br/>Tối ưu quy trình, gia tăng doanh thu.
+      {/* Hero Section */}
+      <main className="landing-hero">
+        <div className="landing-badge">
+          <span>✨</span> Trusted by 500+ Restaurants
+        </div>
+
+        <h1 className="landing-title">
+          Hệ Thống Quản Lý
+          <br />
+          <span className="landing-title-highlight">Nhà Hàng Thông Minh</span>
+        </h1>
+
+        <p className="landing-subtitle">
+          Giải pháp toàn diện kết nối Bếp - Thu Ngân - Khách Hàng.
+          <br />
+          Tối ưu quy trình vận hành, gia tăng doanh thu và nâng cao trải nghiệm.
         </p>
-        
-        <div style={styles.ctaGroup}>
-            <button onClick={() => router.push('/register')} style={styles.btnPrimary}>
-                Mở Quán Ngay
-            </button>
-            <button onClick={() => router.push('/login')} style={styles.btnSecondary}>
-                Vào Trang Quản Trị
-            </button>
+
+        <div className="landing-cta-group">
+          <button onClick={() => router.push("/register")} className="landing-btn-primary">
+            Bắt Đầu Dùng Thử
+          </button>
+          <button onClick={() => router.push("/login")} className="landing-btn-secondary">
+            Vào Trang Quản Trị
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="landing-stats">
+          <div className="landing-stat-card">
+            <span className="landing-stat-number">500+</span>
+            <div className="landing-stat-label">Nhà Hàng</div>
+            <div className="landing-stat-description">Đối tác tin dùng</div>
+          </div>
+          <div className="landing-stat-card">
+            <span className="landing-stat-number">98%</span>
+            <div className="landing-stat-label">Hài Lòng</div>
+            <div className="landing-stat-description">Khảo sát khách hàng</div>
+          </div>
+          <div className="landing-stat-card">
+            <span className="landing-stat-number">45%</span>
+            <div className="landing-stat-label">Tăng Hiệu Suất</div>
+            <div className="landing-stat-description">Quy trình vận hành</div>
+          </div>
+          <div className="landing-stat-card">
+            <span className="landing-stat-number">24/7</span>
+            <div className="landing-stat-label">Hỗ Trợ</div>
+            <div className="landing-stat-description">Đội ngũ chuyên nghiệp</div>
+          </div>
         </div>
       </main>
 
-      <footer style={styles.footer}>
-        © 2024 S2O Technology.
+      {/* Features Section */}
+      <section className="landing-features">
+        <h2 className="landing-features-title">Tính Năng Vượt Trội</h2>
+        <p className="landing-features-subtitle">Tất cả những gì bạn cần để quản lý nhà hàng hiệu quả</p>
+
+        <div className="landing-features-grid">
+          <div className="landing-feature-card">
+            <span className="landing-feature-icon">🍽️</span>
+            <h3 className="landing-feature-title">Quản Lý Menu</h3>
+            <p className="landing-feature-description">
+              Cập nhật menu linh hoạt, phân loại món ăn, quản lý giá và tồn kho thông minh
+            </p>
+          </div>
+
+          <div className="landing-feature-card">
+            <span className="landing-feature-icon">📱</span>
+            <h3 className="landing-feature-title">Order Tức Thì</h3>
+            <p className="landing-feature-description">
+              Khách hàng đặt món qua điện thoại, đồng bộ trực tiếp đến bếp và thu ngân
+            </p>
+          </div>
+
+          <div className="landing-feature-card">
+            <span className="landing-feature-icon">👨‍🍳</span>
+            <h3 className="landing-feature-title">Kết Nối Bếp</h3>
+            <p className="landing-feature-description">
+              Màn hình bếp hiển thị order realtime, phân chia công việc và theo dõi tiến độ
+            </p>
+          </div>
+
+          <div className="landing-feature-card">
+            <span className="landing-feature-icon">💰</span>
+            <h3 className="landing-feature-title">Thu Ngân Thông Minh</h3>
+            <p className="landing-feature-description">
+              Thanh toán nhanh chóng, in hóa đơn tự động, quản lý doanh thu chi tiết
+            </p>
+          </div>
+
+          <div className="landing-feature-card">
+            <span className="landing-feature-icon">📊</span>
+            <h3 className="landing-feature-title">Báo Cáo & Phân Tích</h3>
+            <p className="landing-feature-description">
+              Dashboard trực quan, thống kê doanh thu, món ăn bán chạy và xu hướng kinh doanh
+            </p>
+          </div>
+
+          <div className="landing-feature-card">
+            <span className="landing-feature-icon">🔒</span>
+            <h3 className="landing-feature-title">Bảo Mật Cao</h3>
+            <p className="landing-feature-description">
+              Multi-tenant architecture, phân quyền chi tiết và bảo mật dữ liệu tuyệt đối
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="landing-footer">
+        <div className="landing-footer-content">
+          © 2025 S2O Technology. Giải pháp quản lý nhà hàng thông minh hàng đầu Việt Nam.
+        </div>
       </footer>
     </div>
-  );
+  )
 }
-
-// CSS đơn giản cho trang giới thiệu
-const styles = {
-  container: { minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif' },
-  nav: { display: 'flex', justifyContent: 'space-between', padding: '20px 40px', background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' },
-  logo: { fontSize: '24px', fontWeight: 'bold', color: '#2c3e50' },
-  navLinks: { gap: '15px', display: 'flex' },
-  btnLogin: { padding: '8px 20px', background: 'transparent', border: '1px solid #333', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
-  btnRegister: { padding: '8px 20px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
-  hero: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa', textAlign: 'center', padding: '20px' },
-  title: { fontSize: '48px', color: '#2c3e50', marginBottom: '20px' },
-  subtitle: { fontSize: '18px', color: '#7f8c8d', marginBottom: '40px', lineHeight: '1.6' },
-  ctaGroup: { display: 'flex', gap: '20px' },
-  btnPrimary: { padding: '15px 40px', fontSize: '18px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
-  btnSecondary: { padding: '15px 40px', fontSize: '18px', background: 'white', color: '#333', border: '1px solid #ccc', borderRadius: '8px', cursor: 'pointer' },
-  footer: { padding: '20px', textAlign: 'center', background: '#34495e', color: 'white' }
-};
