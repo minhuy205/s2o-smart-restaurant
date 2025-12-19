@@ -53,23 +53,23 @@ services:
     container_name: ai-service
     ports:
       - "7005:5000"
-  admin-web:
-    build: ../clients/admin-web
-    container_name: admin-web
-    ports:
-      - "3001:3000"
-  restaurant-management-web:
-    build: ../clients/restaurant-management-web
-    ports:
-      - "3002:3000"
-  guest-web:
-    build: ../clients/guest-web
-    ports:
-      - "3003:3000"
-  customer-mobile:
-    build: ../clients/customer-mobile-app
-    ports:
-      - "3004:3000"
+  # admin-web:
+  #   build: ../clients/admin-web
+  #   container_name: admin-web
+  #   ports:
+  #     - "3001:3000"
+  # restaurant-management-web:
+  #   build: ../clients/restaurant-management-web
+  #   ports:
+  #     - "3002:3000"
+  # guest-web:
+  #   build: ../clients/guest-web
+  #   ports:
+  #     - "3003:3000"
+  # customer-mobile:
+  #   build: ../clients/customer-mobile-app
+  #   ports:
+  #     - "3004:3000"
 # env_file:
 #   - ../infra/.env
 volumes:
