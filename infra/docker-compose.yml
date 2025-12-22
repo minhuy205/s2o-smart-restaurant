@@ -1,10 +1,106 @@
+# version: "3.9"
+
+# services:
+#   # 1. DATABASE
+#   postgres:
+#     image: postgres:15-alpine
+#     container_name: postgres
+#     environment:
+#       POSTGRES_USER: ${POSTGRES_USER}
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#       POSTGRES_DB: ${POSTGRES_DB}
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     restart: always
+#     env_file:
+#       - .env
+
+#   # 2. API GATEWAY (ĐIỂM TRUY CẬP CHÍNH)
+#   api-gateway:
+#     build: ../services/api-gateway
+#     container_name: api-gateway
+#     ports:
+#       - "8000:8080"
+#     depends_on:
+#       - tenant-auth-service
+#       - menu-service
+#       - order-payment-service
+#     restart: always
+
+#   # 3. CÁC MICROSERVICES
+#   tenant-auth-service:
+#     build: ../services/tenant-auth-service
+#     container_name: tenant-auth-service
+#     # Có thể đóng port 7001 nếu muốn bắt buộc đi qua Gateway
+#     ports:
+#       - "7001:8080" 
+#     depends_on:
+#       - postgres
+#     env_file:
+#       - .env
+
+#   menu-service:
+#     build: ../services/menu-service
+#     container_name: menu-service
+#     ports:
+#       - "7002:8080"
+#     depends_on:
+#       - postgres
+#     env_file:
+#       - .env
+
+#   order-payment-service:
+#     build: ../services/order-payment-service
+#     container_name: order-payment-service
+#     ports:
+#       - "7003:8080"
+#     depends_on:
+#       - postgres
+#     env_file:
+#       - .env
+
+#   customer-reservation-service:
+#     build: ../services/customer-reservation-service
+#     container_name: customer-reservation-service
+#     ports:
+#       - "7004:80"
+
+#   ai-service:
+#     build: ../services/ai-service
+#     container_name: ai-service
+#     ports:
+#       - "7005:5000"
+
+#   # CÁC FRONTEND (ĐỂ COMMENT NẾU CHƯA DÙNG)
+#   # admin-web:
+#   #   build: ../clients/admin-web
+#   #   container_name: admin-web
+#   #   ports:
+#   #     - "3001:3000"
+#   # restaurant-management-web:
+#   #   build: ../clients/restaurant-management-web
+#   #   ports:
+#   #     - "3002:3000"
+#   # guest-web:
+#   #   build: ../clients/guest-web
+#   #   ports:
+#   #     - "3003:3000"
+#   # customer-mobile:
+#   #   build: ../clients/customer-mobile-app
+#   #   ports:
+#   #     - "3004:3000"
+
+# volumes:
+#   postgres_data:
 version: "3.9"
 
 services:
   # 1. DATABASE
   postgres:
     image: postgres:15-alpine
-    container_name: postgres
+    container_name: postgres      # <--- GIỮ NGUYÊN TÊN CŨ
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -17,10 +113,24 @@ services:
     env_file:
       - .env
 
-  # 2. API GATEWAY (ĐIỂM TRUY CẬP CHÍNH)
+  # 2. MESSAGE QUEUE (MỚI THÊM)
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq      # <--- Đặt tên đơn giản cho đồng bộ
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: always
+
+  # 3. API GATEWAY
   api-gateway:
     build: ../services/api-gateway
-    container_name: api-gateway
+    container_name: api-gateway   # <--- GIỮ NGUYÊN TÊN CŨ
     ports:
       - "8000:8080"
     depends_on:
@@ -29,11 +139,10 @@ services:
       - order-payment-service
     restart: always
 
-  # 3. CÁC MICROSERVICES
+  # 4. MICROSERVICES
   tenant-auth-service:
     build: ../services/tenant-auth-service
-    container_name: tenant-auth-service
-    # Có thể đóng port 7001 nếu muốn bắt buộc đi qua Gateway
+    container_name: tenant-auth-service # <--- GIỮ NGUYÊN TÊN CŨ
     ports:
       - "7001:8080" 
     depends_on:
@@ -43,21 +152,23 @@ services:
 
   menu-service:
     build: ../services/menu-service
-    container_name: menu-service
+    container_name: menu-service        # <--- GIỮ NGUYÊN TÊN CŨ
     ports:
       - "7002:8080"
     depends_on:
       - postgres
+      - rabbitmq  # Chờ RabbitMQ
     env_file:
       - .env
 
   order-payment-service:
     build: ../services/order-payment-service
-    container_name: order-payment-service
+    container_name: order-payment-service # <--- GIỮ NGUYÊN TÊN CŨ
     ports:
       - "7003:8080"
     depends_on:
       - postgres
+      - rabbitmq  # Chờ RabbitMQ
     env_file:
       - .env
 
@@ -72,25 +183,9 @@ services:
     container_name: ai-service
     ports:
       - "7005:5000"
-
-  # CÁC FRONTEND (ĐỂ COMMENT NẾU CHƯA DÙNG)
-  # admin-web:
-  #   build: ../clients/admin-web
-  #   container_name: admin-web
-  #   ports:
-  #     - "3001:3000"
-  # restaurant-management-web:
-  #   build: ../clients/restaurant-management-web
-  #   ports:
-  #     - "3002:3000"
-  # guest-web:
-  #   build: ../clients/guest-web
-  #   ports:
-  #     - "3003:3000"
-  # customer-mobile:
-  #   build: ../clients/customer-mobile-app
-  #   ports:
-  #     - "3004:3000"
+    depends_on:
+      - rabbitmq
 
 volumes:
   postgres_data:
+  rabbitmq_data:
