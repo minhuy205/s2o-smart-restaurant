@@ -70,14 +70,14 @@
 // app.Run();
 using OrderPaymentService.Data;
 using Microsoft.EntityFrameworkCore;
-using MassTransit; // <-- Thêm thư viện này
+using MassTransit; 
+using OrderPaymentService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ==========================================
-// 1. CẤU HÌNH DATABASE
+// 1. CẤU HÌNH DATABASE (PostgreSQL)
 // ==========================================
-// Giữ lại logic fallback connection string cũ của bạn để đảm bảo không lỗi kết nối
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? "Host=postgres;Port=5432;Database=order_db;Username=s2o;Password=h9minhhuy";
 
@@ -103,12 +103,16 @@ builder.Services.AddMassTransit(x =>
 // ==========================================
 // 3. CẤU HÌNH SERVICES & CONTROLLERS
 // ==========================================
-// Chuyển sang dùng Controller thay vì Minimal API
+
+// Đăng ký Service gửi thông báo Firebase
+builder.Services.AddSingleton<NotificationService>();
+
+// Chuyển sang dùng Controller
 builder.Services.AddControllers(); 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Giữ lại cấu hình CORS cho Frontend
+// Cấu hình CORS (Cho phép Frontend gọi API)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
@@ -121,15 +125,18 @@ var app = builder.Build();
 // 4. PIPELINE (LUỒNG XỬ LÝ)
 // ==========================================
 
-// Swagger
-
-    app.UseSwagger();
-    app.UseSwaggerUI();
-
+// Bật Swagger ở mọi môi trường để dễ test
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseCors("AllowAll");
 
-// Tự động chạy Migration (Tạo bảng nếu chưa có)
+app.UseAuthorization();
+
+// Tự động map các Controller (bao gồm OrderController)
+app.MapControllers(); 
+
+// Tự động chạy Migration (Tạo bảng DB nếu chưa có)
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -137,19 +144,13 @@ using (var scope = app.Services.CreateScope())
     {
         var db = services.GetRequiredService<AppDbContext>();
         db.Database.Migrate();
+        Console.WriteLine("--> Database Migration Applied Successfully.");
     }
     catch (Exception ex)
     {
-        // Log lỗi nếu không kết nối được DB lúc khởi động
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Lỗi khi thực hiện Migration Database.");
+        logger.LogError(ex, "--> Lỗi khi thực hiện Migration Database.");
     }
 }
-
-app.UseAuthorization();
-
-// QUAN TRỌNG: Lệnh này sẽ tự động tìm và kích hoạt OrderController.cs
-// (Bạn phải chắc chắn đã tạo file Controllers/OrderController.cs như hướng dẫn trước)
-app.MapControllers(); 
 
 app.Run();

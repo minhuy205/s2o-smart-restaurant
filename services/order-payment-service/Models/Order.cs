@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
 
 namespace OrderPaymentService.Models
 {
@@ -7,10 +8,8 @@ namespace OrderPaymentService.Models
     {
         public int Id { get; set; }
 
-        // --- QUAN TRỌNG: Cần thêm TableId để Controller không bị lỗi ---
+        // --- QUAN TRỌNG: TableId để mapping với bàn ăn ---
         public int TableId { get; set; }
-        // ----------------------------------------------------------------
-
         public string TableName { get; set; } = string.Empty;
         
         [Column(TypeName = "decimal(18,2)")]
@@ -22,6 +21,10 @@ namespace OrderPaymentService.Models
 
         // Phân biệt đơn của nhà hàng nào
         public int TenantId { get; set; }
+
+        // --- FIX: DeviceToken phải nằm ở đây (Cấp độ Đơn hàng) ---
+        // Để lưu token của máy khách đặt đơn, phục vụ bắn thông báo Firebase
+        public string? DeviceToken { get; set; } 
 
         public List<OrderItem> Items { get; set; } = new();
     }

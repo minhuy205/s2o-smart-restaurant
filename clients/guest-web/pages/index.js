@@ -3,15 +3,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
 
+// Import Firebase (Logic lấy token thật)
+import { requestForToken } from '../utils/firebaseConfig'; 
+
 import { 
     globalStyles, headerStyle, categoryNavStyle, categoryTabStyle, 
     btnSecondaryStyle, SECONDARY_COLOR, PRIMARY_COLOR, TEXT_COLOR,
     menuGridContainerStyle, successModalContainer, successModalContent, 
     successIconStyle, btnSuccessStyle, FONT_FAMILY, 
     actionContainerStyle, headerInnerStyle,
-    headerInfoStyle, headerTitleStyle, btnOrderStyle,
-    tableBadgeStyle 
-} from '../components/Menu/Styles'; // Cập nhật import
+    headerInfoStyle, headerTitleStyle, tableBadgeStyle 
+} from '../components/Menu/Styles'; 
+
 import OrderHistory from '../components/OrderHistory';
 import CartFooter from '../components/Cart/CartFooter';
 import ItemCard from '../components/Menu/ItemCard'; 
@@ -37,13 +40,30 @@ export default function GuestMenu() {
   const [showHistory, setShowHistory] = useState(false); 
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [isCartOpen, setIsCartOpen] = useState(true); 
+  
+  // State lưu Token thật của thiết bị khách
+  const [deviceToken, setDeviceToken] = useState(null);
 
-  // ... (Giữ nguyên useEffect và loadRestaurantData) ...
+  // 1. Load dữ liệu nhà hàng
   useEffect(() => {
     if (tenantId && tableId) {
       loadRestaurantData(tenantId, tableId);
     }
   }, [tenantId, tableId]);
+
+  // 2. Lấy Device Token ngay khi khách vào Web (Xin quyền thông báo)
+  useEffect(() => {
+    // Chỉ chạy ở Client
+    if (typeof window !== 'undefined') {
+        const initFCM = async () => {
+            const token = await requestForToken();
+            if (token) {
+                setDeviceToken(token); // Lưu token thật vào state
+            }
+        };
+        initFCM();
+    }
+  }, []);
 
   const loadRestaurantData = async (tid, tbid) => {
     setLoading(true);
@@ -92,7 +112,6 @@ export default function GuestMenu() {
     setLoading(false);
   };
   
-  // ... (Giữ nguyên các useMemo và hàm xử lý cart) ...
   const categories = useMemo(() => {
     const uniqueCats = [...new Set(allMenuItems.map(item => item.category))].filter(Boolean);
     const order = ['Món nước', 'Món khô', 'Đồ uống', 'Tráng miệng', 'Khác'];
@@ -131,15 +150,25 @@ export default function GuestMenu() {
   const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const calculateTotalItems = () => cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  // --- HÀM GỬI ĐƠN HÀNG (QUAN TRỌNG) ---
   const handlePlaceOrder = async () => {
     if (!tableInfo || cart.length === 0) return alert("Không có món!");
+    
+    // Tạo Payload gửi xuống Backend
     const payload = {
       tableName: tableInfo.name, 
       totalAmount: calculateTotal(),
       status: "Pending",
       tenantId: Number(tenantId),
+      tableId: Number(tableId),
+      
+      // --- TOKEN THẬT: Gửi kèm token lấy được từ Firebase ---
+      deviceToken: deviceToken, 
+      // -----------------------------------------------------
+
       items: cart.map(i => ({ menuItemName: i.name, price: i.price, quantity: i.quantity, note: "" }))
     };
+
     const res = await fetchAPI(SERVICES.ORDER, '/api/orders', { method: 'POST', body: JSON.stringify(payload) });
     if (res?.id) {
         await fetchAPI(SERVICES.MENU, `/api/tables/${tableId}/status`, { method: 'PUT', body: JSON.stringify({ status: 'Occupied', currentOrderId: res.id }) });
@@ -153,7 +182,6 @@ export default function GuestMenu() {
   
   if (showHistory) return <OrderHistory tenantId={tenantId} tableId={tableInfo?.name} onClose={() => setShowHistory(false)} />;
 
-  // Style cho tiêu đề danh mục
   const categoryHeadingStyle = { 
       padding: '0 25px', 
       margin: '25px 0 10px 0', 
@@ -191,11 +219,17 @@ export default function GuestMenu() {
         </nav>
       </header>
 
+      {/* Hiển thị thông báo yêu cầu bật quyền nếu chưa có Token (Optional UX) */}
+      {!deviceToken && (
+        <div style={{backgroundColor: '#fff3cd', color: '#856404', padding: '10px', fontSize: '13px', textAlign: 'center'}}>
+          ⚠️ Vui lòng nhấn <b>"Cho phép"</b> thông báo để nhận tin khi món ăn xong!
+        </div>
+      )}
+
       <main style={{ padding: '10px 0' }}>
         {selectedCategory === 'Tất cả' ? (
             categories.filter(cat => cat !== 'Tất cả' && groupedMenuItems[cat] && groupedMenuItems[cat].length > 0).map(cat => (
                 <section key={cat}>
-                    {/* Sử dụng style tiêu đề mới */}
                     <h4 style={categoryHeadingStyle}>{cat}</h4>
                     <div style={menuGridContainerStyle}>
                         {groupedMenuItems[cat].map(item => <ItemCard key={item.id} item={item} addToCart={addToCart} />)}

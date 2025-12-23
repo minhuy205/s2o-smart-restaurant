@@ -1,13 +1,12 @@
 // clients/guest-web/components/Menu/Styles.js
 
 // --- Màu sắc Luxury & Hiện đại ---
-// Sử dụng tông đỏ san hô (Coral Red) và than chì (Charcoal) sang trọng hơn
 export const PRIMARY_COLOR = '#FF5E57'; 
-export const PRIMARY_LIGHT = '#FFF0F0'; // Màu nền nhạt cho các badge
+export const PRIMARY_LIGHT = '#FFF0F0'; 
 export const SECONDARY_COLOR = '#1E272E'; 
 export const TEXT_COLOR = '#485460';
-export const BG_COLOR = '#F7F9FC'; // Nền xám xanh rất nhạt, hiện đại
-// Sử dụng font Poppins nếu đã import, fallback về sans-serif hệ thống
+export const BG_COLOR = '#F7F9FC'; 
+
 export const FONT_FAMILY = "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 export const globalStyles = {
@@ -16,7 +15,8 @@ export const globalStyles = {
     minHeight: '100vh',
     paddingBottom: '130px', 
     color: TEXT_COLOR,
-    '-webkit-font-smoothing': 'antialiased', // Giúp font chữ mượt hơn trên Mac/iOS
+    // FIX: Đổi sang CamelCase
+    WebkitFontSmoothing: 'antialiased', 
 };
 
 // Hàm tạo style nút bấm cơ bản
@@ -28,20 +28,14 @@ export const createButtonStyle = (bgColor, color = 'white') => ({
     padding: '8px 16px',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)', // Hiệu ứng chuyển động mượt
+    transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)', 
     boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '13px',
-    ':hover': { // (Lưu ý: inline-style React không hỗ trợ :hover trực tiếp, đây là mô phỏng ý đồ)
-        transform: 'translateY(-2px)',
-        boxShadow: '0 6px 15px rgba(0,0,0,0.15)'
-    },
-    ':active': {
-        transform: 'translateY(0)',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-    }
+    // Lưu ý: :hover và :active không hoạt động trong inline style React
+    // Bạn nên dùng CSS class hoặc thư viện styled-components nếu muốn hover thật
 });
 
 export const btnPrimaryStyle = createButtonStyle(PRIMARY_COLOR);
@@ -56,9 +50,7 @@ export const btnSecondaryStyle = {
 // --- HEADER ---
 export const headerStyle = {
     backgroundColor: 'white',
-    // Tăng padding để header thoáng hơn
     padding: '15px 20px 5px 20px', 
-    // Shadow mềm và sâu hơn
     boxShadow: '0 5px 25px rgba(0,0,0,0.04)',
     position: 'sticky',
     top: 0,
@@ -84,18 +76,17 @@ export const headerInfoStyle = {
 export const headerTitleStyle = {
     margin: 0, 
     color: SECONDARY_COLOR,
-    fontSize: '22px', // Tăng kích thước tiêu đề
+    fontSize: '22px', 
     fontWeight: '800',
     letterSpacing: '-0.5px',
 };
 
-// Badge bàn ăn được thiết kế lại
 export const tableBadgeStyle = {
     display: 'inline-flex',
     alignItems: 'center',
-    backgroundColor: PRIMARY_LIGHT, // Nền đỏ nhạt
+    backgroundColor: PRIMARY_LIGHT, 
     padding: '5px 10px',
-    borderRadius: '20px', // Bo tròn hoàn toàn
+    borderRadius: '20px', 
     fontSize: '12px',
     fontWeight: '700',
     color: PRIMARY_COLOR,
@@ -111,10 +102,9 @@ export const actionContainerStyle = {
 // --- Category Navigation ---
 export const categoryNavStyle = {
     position: 'sticky',
-    // Điều chỉnh top để khớp với header mới bo góc
     top: '85px', 
-    marginTop: '-10px', // Kéo lên đè nhẹ vào header
-    backgroundColor: 'transparent', // Nền trong suốt để lộ BG_COLOR
+    marginTop: '-10px', 
+    backgroundColor: 'transparent', 
     padding: '10px 0 15px 0', 
     overflowX: 'auto',
     whiteSpace: 'nowrap',
@@ -123,15 +113,17 @@ export const categoryNavStyle = {
     gap: '10px',
     paddingLeft: '20px',
     paddingRight: '20px',
-    // Ẩn thanh cuộn
-    scrollbarWidth: 'none', 
-    '-ms-overflow-style': 'none',
-    '::-webkit-scrollbar': { display: 'none' }
+    
+    // FIX: Sửa lỗi scrollbar
+    scrollbarWidth: 'none', // Firefox
+    msOverflowStyle: 'none', // IE/Edge (CamelCase)
+    // Lưu ý: ::-webkit-scrollbar không dùng được ở đây. 
+    // Hãy dùng class .hide-scrollbar trong file CSS toàn cục (index.css)
 };
 
 export const categoryTabStyle = (isActive) => ({
     padding: '8px 18px', 
-    borderRadius: '25px', // Tab bo tròn hơn
+    borderRadius: '25px', 
     cursor: 'pointer',
     backgroundColor: isActive ? PRIMARY_COLOR : 'white',
     color: isActive ? 'white' : TEXT_COLOR,
@@ -142,30 +134,26 @@ export const categoryTabStyle = (isActive) => ({
     boxShadow: isActive ? '0 5px 15px rgba(255, 94, 87, 0.3)' : '0 2px 8px rgba(0,0,0,0.03)'
 });
 
-// --- MENU GRID (GIAO DIỆN CARD MỚI) ---
+// --- MENU GRID ---
 export const menuGridContainerStyle = {
     display: 'grid',
-    // Giữ nguyên 4 cột
     gridTemplateColumns: 'repeat(4, 1fr)', 
-    gap: '15px', // Tăng khoảng cách giữa các thẻ
+    gap: '15px', 
     padding: '0 20px 20px 20px', 
 };
 
-// Thẻ món ăn được thiết kế lại hoàn toàn
 export const itemGridCardStyle = {
     backgroundColor: 'white',
     borderRadius: '16px', 
     overflow: 'hidden',
-    // Đổ bóng sâu tạo cảm giác nổi (Elevated Card)
     boxShadow: '0 8px 20px rgba(0,0,0,0.06)', 
     display: 'flex',
     flexDirection: 'column',
     height: '100%', 
-    // Tăng chiều cao tối thiểu
     minHeight: '260px', 
     transition: 'all 0.3s ease',
     position: 'relative',
-    border: '1px solid rgba(0,0,0,0.02)' // Viền siêu mờ
+    border: '1px solid rgba(0,0,0,0.02)' 
 };
 
 export const itemGridImageStyle = {
@@ -190,9 +178,11 @@ export const itemNameStyle = {
     color: SECONDARY_COLOR,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+    
+    // FIX: Sửa lỗi Webkit Property (CamelCase)
     display: '-webkit-box',
-    '-webkit-line-clamp': '2', // Cho phép hiển thị tối đa 2 dòng tên
-    '-webkit-box-orient': 'vertical',
+    WebkitLineClamp: 2, // Đổi từ '-webkit-line-clamp'
+    WebkitBoxOrient: 'vertical', // Đổi từ '-webkit-box-orient'
     lineHeight: '1.4'
 }
 
@@ -202,22 +192,17 @@ export const priceStyle = {
     color: PRIMARY_COLOR,
 };
 
-// Style cho nút "Thêm" mới (to và dễ bấm hơn)
 export const itemAddButtonStyle = {
     ...createButtonStyle(PRIMARY_COLOR),
     padding: '8px 0',
-    width: '100%', // Full width
+    width: '100%', 
     fontSize: '12px',
     borderRadius: '10px',
-    marginTop: 'auto', // Đẩy xuống đáy
-    boxShadow: 'none', // Bỏ shadow mặc định để dùng shadow của card
-    backgroundColor: 'rgba(255, 94, 87, 0.1)', // Nền nhạt
-    color: PRIMARY_COLOR, // Chữ màu chính
+    marginTop: 'auto', 
+    boxShadow: 'none', 
+    backgroundColor: 'rgba(255, 94, 87, 0.1)', 
+    color: PRIMARY_COLOR, 
     fontWeight: '700',
-    ':hover': {
-        backgroundColor: PRIMARY_COLOR,
-        color: 'white'
-    }
 };
 
 
@@ -228,10 +213,9 @@ export const cartFooterStyle = {
     left: 0,
     right: 0,
     backgroundColor: 'white', 
-    padding: '25px 20px', // Tăng padding
+    padding: '25px 20px', 
     borderTopLeftRadius: '25px',
     borderTopRightRadius: '25px',
-    // Shadow ngược mạnh hơn
     boxShadow: '0 -10px 30px rgba(0,0,0,0.1)', 
     zIndex: 1000,
     display: 'flex',
@@ -249,7 +233,7 @@ export const cartHeaderRowStyle = {
 };
 
 export const cartDetailContainerStyle = {
-    maxHeight: '200px', // Tăng chiều cao hiển thị danh sách
+    maxHeight: '200px', 
     overflowY: 'auto',
     marginBottom: '20px',
     paddingRight: '5px'
@@ -272,7 +256,7 @@ export const cartTotalRowStyle = {
 };
 
 export const btnOrderStyle = {
-    ...createButtonStyle('#27ae60'), // Màu xanh lá đậm hơn
+    ...createButtonStyle('#27ae60'), 
     fontSize: '16px',
     padding: '14px 30px',
     borderRadius: '30px', 
@@ -329,7 +313,7 @@ export const successModalContainer = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(30, 39, 46, 0.8)', // Nền tối màu xanh đen
+    backgroundColor: 'rgba(30, 39, 46, 0.8)', 
     backdropFilter: 'blur(8px)',
     display: 'flex',
     justifyContent: 'center',

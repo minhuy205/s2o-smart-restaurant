@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace OrderPaymentService.Events
 {
-    // Class này chứa thông tin đơn hàng sẽ gửi đi
+    // Class này chứa thông tin đơn hàng sẽ gửi đi qua RabbitMQ
     public class OrderCreatedEvent
     {
         public int OrderId { get; set; }
@@ -13,7 +13,7 @@ namespace OrderPaymentService.Events
         public DateTime CreatedAt { get; set; }
         public string? Status { get; set; }
         
-        // Bạn có thể thêm List món ăn vào đây nếu cần hiển thị chi tiết bên Bếp
-        // public List<OrderItemDto> Items { get; set; } 
+        // Có thể mở rộng thêm Items sau này nếu Service khác cần biết chi tiết món
+        // public List<object> Items { get; set; } 
     }
 }
