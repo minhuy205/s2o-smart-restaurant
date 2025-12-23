@@ -43,7 +43,7 @@ INSERT INTO "OrderItems" ("MenuItemName", "Price", "Quantity", "Note", "OrderId"
 VALUES 
 ('Phở Bò Tái', 55000, 2, 'Không hành', (SELECT "Id" FROM "Orders" LIMIT 1)),
 ('Trà Đá', 5000, 4, '', (SELECT "Id" FROM "Orders" LIMIT 1));
-
+================================================================================================================================================================================================================================================================
 
 -- ================================================================
 -- 2. DATABASE: menu_db
@@ -104,6 +104,56 @@ INSERT INTO "Tables" ("Name", "Status", "TenantId") VALUES
 ('Bàn 3', 'Available', 1),
 ('Bàn 4', 'Available', 1),
 ('Bàn VIP 1', 'Available', 1);
+CSDL CHO MENU
+-- ===============================
+-- DATA CHO 3 NHÀ HÀNG (TENANT 2,3,4)
+-- ===============================
+
+-- ========= TENANT 2: QUÁN BÚN – MÌ =========
+INSERT INTO "MenuItems"
+("Name", "Price", "CategoryId", "Description", "ImageUrl", "IsAvailable", "TenantId")
+VALUES
+('Bún Bò Huế', 50000, 1, 'Bún bò Huế cay nhẹ', 'https://via.placeholder.com/150', TRUE, 2),
+('Mì Quảng Gà', 45000, 1, 'Mì Quảng gà ta', 'https://via.placeholder.com/150', TRUE, 2),
+('Bún Chả Hà Nội', 55000, 2, 'Bún chả nướng than', 'https://via.placeholder.com/150', TRUE, 2),
+('Nước Sâm', 20000, 3, 'Nước sâm thảo mộc', 'https://via.placeholder.com/150', TRUE, 2);
+
+INSERT INTO "Tables" ("Name", "Status", "TenantId") VALUES
+('Bàn 1', 'Available', 2),
+('Bàn 2', 'Available', 2),
+('Bàn 3', 'Available', 2),
+('Bàn 4', 'Available', 2);
+
+-- ========= TENANT 3: CƠM GIA ĐÌNH =========
+INSERT INTO "MenuItems"
+("Name", "Price", "CategoryId", "Description", "ImageUrl", "IsAvailable", "TenantId")
+VALUES
+('Cơm Gà Xối Mỡ', 60000, 2, 'Gà chiên giòn ăn kèm cơm', 'https://via.placeholder.com/150', TRUE, 3),
+('Cơm Cá Kho Tộ', 55000, 2, 'Cá kho tộ đậm vị', 'https://via.placeholder.com/150', TRUE, 3),
+('Canh Chua Cá', 40000, 1, 'Canh chua miền Tây', 'https://via.placeholder.com/150', TRUE, 3),
+('Trà Chanh', 15000, 3, 'Trà chanh mát lạnh', 'https://via.placeholder.com/150', TRUE, 3);
+
+INSERT INTO "Tables" ("Name", "Status", "TenantId") VALUES
+('Bàn 1', 'Available', 3),
+('Bàn 2', 'Available', 3),
+('Bàn 3', 'Available', 3),
+('Bàn 4', 'Available', 3);
+
+-- ========= TENANT 4: CAFE – TRÀ SỮA =========
+INSERT INTO "MenuItems"
+("Name", "Price", "CategoryId", "Description", "ImageUrl", "IsAvailable", "TenantId")
+VALUES
+('Cafe Sữa Đá', 25000, 3, 'Cafe phin truyền thống', 'https://via.placeholder.com/150', TRUE, 4),
+('Bạc Xỉu', 30000, 3, 'Bạc xỉu ngọt dịu', 'https://via.placeholder.com/150', TRUE, 4),
+('Trà Sữa Trân Châu', 35000, 3, 'Trà sữa truyền thống', 'https://via.placeholder.com/150', TRUE, 4),
+('Bánh Flan', 20000, 4, 'Bánh flan trứng sữa', 'https://via.placeholder.com/150', TRUE, 4);
+
+INSERT INTO "Tables" ("Name", "Status", "TenantId") VALUES
+('Bàn 1', 'Available', 4),
+('Bàn 2', 'Available', 4),
+('Bàn 3', 'Available', 4),
+('Bàn 4', 'Available', 4);
+================================================================================================================================================================================================
 -- ================================================================
 -- 3. DATABASE: auth_db
 -- ================================================================
@@ -144,3 +194,16 @@ VALUES
 ('admin1', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Admin Chính', 'Admin', NULL, '0901000001', 0, NOW()),
 ('owner_demo', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Chủ Quán Demo', 'Owner', 1, '0909999999', 0, NOW()),
 ('khachhang1', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Khách VIP', 'Customer', NULL, '0908888888', 100, NOW());
+ALTER TABLE "Tenants" ADD COLUMN IF NOT EXISTS "LogoUrl" text;
+ALTER TABLE "Tenants" ADD COLUMN IF NOT EXISTS "OwnerName" text;
+ALTER TABLE "Tenants" ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone;
+-- Thêm cột mới vào bảng Tenants để lưu thông tin chủ sở hữu
+ALTER TABLE "Tenants" 
+ADD COLUMN "OwnerName" TEXT,
+ADD COLUMN "PhoneNumber" TEXT,
+ADD COLUMN "UpdatedAt" TIMESTAMP;
+
+-- Cập nhập dữ liệu demo có thông tin chủ sở hữu
+UPDATE "Tenants" 
+SET "OwnerName" = 'Chủ Quán Demo', "PhoneNumber" = '0909999999' 
+WHERE "Id" = 1;
