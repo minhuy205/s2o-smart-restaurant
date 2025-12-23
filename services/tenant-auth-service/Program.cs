@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TenantAuthService.Data;
 using TenantAuthService.Endpoints;
+using Prometheus; // Thêm thư viện Monitoring
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,48 +12,43 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// 2. Cấu hình CORS (QUAN TRỌNG ĐỂ FIX LỖI FRONTEND)
+// 2. Cấu hình CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
-        policy => policy
-            .AllowAnyOrigin()   // Chấp nhận mọi nguồn (localhost:3001)
-            .AllowAnyMethod()
-            .AllowAnyHeader());
+        policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
-// 3. Thêm dịch vụ Authentication & Authorization (Cần thiết vì bạn đã cài JwtBearer)
 builder.Services.AddAuthentication().AddJwtBearer();
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// --- MIDDLEWARE PIPELINE ---
-
-// 4. Kích hoạt CORS (Phải đặt đầu tiên)
+// 3. MIDDLEWARE & MONITORING
 app.UseCors("AllowAll");
 
-// 5. Kích hoạt Auth (Đặt sau CORS)
+// --- THÊM DÒNG NÀY CHO PROMETHEUS ---
+app.UseHttpMetrics(); 
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/", () => "Tenant Auth Service is Running...");
 
-// 6. Tự động tạo DB (Migration)
+// 4. MAP ENDPOINTS & METRICS
+app.MapAuthEndpoints();
+
+// --- THÊM DÒNG NÀY ĐỂ XUẤT DATA METRICS ---
+app.MapMetrics(); 
+
 using (var scope = app.Services.CreateScope())
 {
-    try 
-    {
+    try {
         var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         db.Database.EnsureCreated();
-    }
-    catch (Exception ex)
-    {
+    } catch (Exception ex) {
         Console.WriteLine($"Lỗi tạo DB: {ex.Message}");
     }
 }
-
-// 7. Map API Endpoints (CHỈ GỌI 1 LẦN Ở ĐÂY)
-app.MapAuthEndpoints();
 
 app.Run();

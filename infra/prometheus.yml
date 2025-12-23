@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s # Định kỳ 15 giây lấy dữ liệu 1 lần
+
+scrape_configs:
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['order-payment-service:8080'] # Tên container và port nội bộ
+
+  - job_name: 'menu-service'
+    static_configs:
+      - targets: ['menu-service:8080']
+
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['tenant-auth-service:8080']

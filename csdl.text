@@ -43,6 +43,16 @@ INSERT INTO "OrderItems" ("MenuItemName", "Price", "Quantity", "Note", "OrderId"
 VALUES 
 ('Phở Bò Tái', 55000, 2, 'Không hành', (SELECT "Id" FROM "Orders" LIMIT 1)),
 ('Trà Đá', 5000, 4, '', (SELECT "Id" FROM "Orders" LIMIT 1));
+
+-- Thêm cột DeviceToken vào bảng Orders nếu chưa tồn tại
+ALTER TABLE "Orders" 
+ADD COLUMN IF NOT EXISTS "DeviceToken" TEXT;
+
+-- (Tùy chọn) Kiểm tra lại cấu trúc bảng sau khi thêm
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'Orders';
+
 ================================================================================================================================================================================================================================================================
 
 -- ================================================================
