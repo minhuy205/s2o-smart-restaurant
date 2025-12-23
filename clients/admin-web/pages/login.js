@@ -29,7 +29,17 @@ export default function LoginPage() {
         document.cookie = `s2o_token=${data.token}; path=/; domain=localhost; max-age=86400; SameSite=Lax`
 
         alert("Đăng nhập thành công!")
-        router.push("/dashboard")
+        // Redirect based on role: Admin -> admin dashboard, Owner -> restaurant management app
+        const RESTAURANT_URL = process.env.NEXT_PUBLIC_RESTAURANT_URL || "http://localhost:3002"
+        if (data.role === "Admin") {
+          router.push("/dashboard")
+        } else if (data.role === "Owner" || data.role === "Tenant") {
+          // Navigate to the restaurant-management-web application (full page navigation)
+          window.location.href = RESTAURANT_URL
+        } else {
+          // default: admin dashboard
+          router.push("/dashboard")
+        }
       } else {
         setError("Không nhận được token từ server")
       }
