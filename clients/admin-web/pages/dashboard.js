@@ -229,6 +229,44 @@ function OverviewPage({ user }) {
 
 function RestaurantsPage({ user }) {
   const [showModal, setShowModal] = useState(false)
+  const [restaurants, setRestaurants] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    fetchRestaurants()
+  }, [])
+
+  const fetchRestaurants = async () => {
+    try {
+      setLoading(true)
+      const token = localStorage.getItem("s2o_token")
+      // Use NEXT_PUBLIC_API_URL (Next.js) if provided, otherwise default to tenant-auth-service port used in docker-compose (7001)
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL || "http://localhost:7001"
+      const response = await fetch(`${apiBase}/api/admin/tenants`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => null)
+        throw new Error(`Failed to fetch restaurants: ${response.status} ${response.statusText} ${text || ''}`)
+      }
+
+      const data = await response.json()
+      console.log("[v0] Fetched tenants:", data)
+      setRestaurants(data || [])
+      setError(null)
+    } catch (err) {
+      console.error("[v0] Error fetching restaurants:", err)
+      setError(err.message)
+      setRestaurants([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <>
@@ -244,63 +282,53 @@ function RestaurantsPage({ user }) {
             </button>
           </div>
         </div>
-        <table className="dashboard-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Tên nhà hàng</th>
-              <th>Chủ quán</th>
-              <th>Địa chỉ</th>
-              <th>Số đơn</th>
-              <th>Trạng thái</th>
-              <th>Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>#RES-001</td>
-              <td>Phở Hà Nội 24</td>
-              <td>Nguyễn Văn A</td>
-              <td>123 Lê Duẩn, Hà Nội</td>
-              <td>542</td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-success">Hoạt động</span>
-              </td>
-              <td>
-                <button className="dashboard-action-btn dashboard-action-btn-edit">Sửa</button>
-                <button className="dashboard-action-btn dashboard-action-btn-delete">Xóa</button>
-              </td>
-            </tr>
-            <tr>
-              <td>#RES-002</td>
-              <td>Bún Chả Hương Liên</td>
-              <td>Trần Thị B</td>
-              <td>456 Trần Phú, Hà Nội</td>
-              <td>428</td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-success">Hoạt động</span>
-              </td>
-              <td>
-                <button className="dashboard-action-btn dashboard-action-btn-edit">Sửa</button>
-                <button className="dashboard-action-btn dashboard-action-btn-delete">Xóa</button>
-              </td>
-            </tr>
-            <tr>
-              <td>#RES-003</td>
-              <td>Cơm Tấm Sài Gòn</td>
-              <td>Lê Văn C</td>
-              <td>789 Nguyễn Huệ, TP.HCM</td>
-              <td>356</td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-warning">Chờ duyệt</span>
-              </td>
-              <td>
-                <button className="dashboard-action-btn dashboard-action-btn-edit">Sửa</button>
-                <button className="dashboard-action-btn dashboard-action-btn-delete">Xóa</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+
+        {loading && <p style={{ padding: "20px", textAlign: "center" }}>Đang tải dữ liệu...</p>}
+        {error && <p style={{ padding: "20px", textAlign: "center", color: "red" }}>Lỗi: {error}</p>}
+
+        {!loading && restaurants.length === 0 && (
+          <p style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>Không có nhà hàng nào</p>
+        )}
+
+        {!loading && restaurants.length > 0 && (
+          <table className="dashboard-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tên nhà hàng</th>
+                <th>Chủ quán</th>
+                <th>Địa chỉ</th>
+                <th>Số điện thoại</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {restaurants.map((restaurant) => (
+                <tr key={restaurant.id}>
+                  <td>#{restaurant.id}</td>
+                  <td>{restaurant.name}</td>
+                  <td>{restaurant.ownerName || "N/A"}</td>
+                  <td>{restaurant.address}</td>
+                  <td>{restaurant.phoneNumber || "N/A"}</td>
+                  <td>
+                    <span
+                      className={`dashboard-badge ${
+                        restaurant.isActive ? "dashboard-badge-success" : "dashboard-badge-warning"
+                      }`}
+                    >
+                      {restaurant.isActive ? "Hoạt động" : "Chờ duyệt"}
+                    </span>
+                  </td>
+                  <td>
+                    <button className="dashboard-action-btn dashboard-action-btn-edit">Sửa</button>
+                    <button className="dashboard-action-btn dashboard-action-btn-delete">Xóa</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {showModal && (
