@@ -1,6 +1,6 @@
-# -----------------------------
-# Node.js / Next.js / React
-# -----------------------------
+# ==============================================
+# PHẦN 1: NODE.JS / NEXT.JS / REACT (Web Admin & Guest)
+# ==============================================
 node_modules/
 .env
 .env.local
@@ -19,50 +19,81 @@ yarn-error.log*
 pnpm-debug.log*
 .vscode/
 
-# MacOS system files
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Logs
-logs
-*.log
-*.gz
-
-# Optional
-coverage/
-tmp/
-temp/
-
-# -----------------------------
-# .NET (C#, ASP.NET Core)
-# -----------------------------
+# ==============================================
+# PHẦN 2: .NET (BACKEND & SERVICES)
+# ==============================================
 bin/
 obj/
 *.user
 *.suo
 *.cache
 *.pdb
-
-# Visual Studio
 .vs/
 launchSettings.json
-
-# Rider / JetBrains
 .idea/
-
-# Publish folders
 **/publish/
 **/wwwroot/lib/
 
-# --------------------------------
-# Docker
-# --------------------------------
+# ==============================================
+# PHẦN 3: DOCKER & INFRA
+# ==============================================
 docker-data/
 docker-compose.override.yml
 
-# --------------------------------
-# Monorepo special folders
-# --------------------------------
-packages/*/node_modules/
-services/*/node_modules/
+# ==============================================
+# PHẦN 4: MOBILE APP (REACT NATIVE / EXPO) - QUAN TRỌNG
+# ==============================================
+# Thư mục cache của Expo (cái tạo ra 66 file rác)
+.expo/
+web-build/
+expo-env.d.ts
+
+# File build của Android/iOS (nếu sau này prebuild)
+**/android/build/
+**/android/.gradle/
+**/android/app/build/
+**/android/local.properties
+**/ios/Pods/
+**/ios/build/
+**/ios/*.xcworkspace/xcuserdata
+
+# File khóa ký ứng dụng (Tuyệt đối không up)
+*.jks
+*.keystore
+*.p12
+*.key
+
+# ==============================================
+# PHẦN 5: BẢO MẬT & KEY (CHẶN LỘ FILE NHẠY CẢM)
+# ==============================================
+# Key Firebase và Google
+firebase-key.json
+firebase-service-account.json
+google-services.json
+GoogleService-Info.plist
+
+# Các file chứa biến môi trường khác
+**/secrets/
+**/config/secrets.json
+
+# ==============================================
+# PHẦN 6: TOOL CHẠY TAY (Ngrok, Cloudflare)
+# ==============================================
+cloudflared.exe
+ngrok.exe
+*.exe
+
+# ==============================================
+# PHẦN 7: FILE HỆ THỐNG & RÁC KHÁC
+# ==============================================
+.DS_Store
+.AppleDouble
+.LSOverride
+logs
+*.log
+*.gz
+coverage/
+tmp/
+temp/
+*.sql
+*.bak

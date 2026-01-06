@@ -1,9 +1,22 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+// Import các file vừa tạo
+import LoginScreen from '../src/utils/screens/LoginScreen'; 
+import HomeScreen from './HomeScreen';   // <--- Đảm bảo file này đã có
+import MenuScreen from './MenuScreen';   // <--- Đảm bảo file này đã có
+
+const Stack = createNativeStackNavigator();
+
 export default function App() {
   return (
-    <View style={{flex:1,justifyContent:'center',alignItems:'center'}}>
-      <Text>Customer Mobile App - S2O (Owner: Lê Anh Kiệt)</Text>
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Login">
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Trang chủ' }} />
+        <Stack.Screen name="Menu" component={MenuScreen} options={{ title: 'Thực đơn' }} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
