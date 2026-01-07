@@ -7,7 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 1. Cấu hình Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? "Host=localhost;Port=5432;Database=auth_db;Username=s2o;Password=h9minhhuy";
+    ?? "Host=postgres;Port=5432;Database=auth_db;Username=s2o;Password=h9minhhuy";
+
+    // ?? "Host=localhost;Port=5432;Database=auth_db;Username=s2o;Password=h9minhhuy";
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(connectionString));

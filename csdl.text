@@ -114,7 +114,7 @@ INSERT INTO "Tables" ("Name", "Status", "TenantId") VALUES
 ('Bàn 3', 'Available', 1),
 ('Bàn 4', 'Available', 1),
 ('Bàn VIP 1', 'Available', 1);
-CSDL CHO MENU
+-- CSDL CHO MENU
 -- ===============================
 -- DATA CHO 3 NHÀ HÀNG (TENANT 2,3,4)
 -- ===============================
@@ -165,55 +165,59 @@ INSERT INTO "Tables" ("Name", "Status", "TenantId") VALUES
 ('Bàn 4', 'Available', 4);
 ================================================================================================================================================================================================
 -- ================================================================
--- 3. DATABASE: auth_db
+-- DATABASE: auth_db
 -- ================================================================
 
--- Xóa bảng cũ
+-- ===============================
+-- RESET
+-- ===============================
 DROP TABLE IF EXISTS "Users";
 DROP TABLE IF EXISTS "Tenants";
 
--- Tạo bảng Nhà Hàng
-CREATE TABLE IF NOT EXISTS "Tenants" (
+-- ===============================
+-- TENANTS (NHÀ HÀNG)
+-- ===============================
+CREATE TABLE "Tenants" (
     "Id" SERIAL PRIMARY KEY,
     "Name" TEXT NOT NULL,
     "Address" TEXT,
+    "LogoUrl" TEXT,
+    "OwnerName" TEXT,
+    "PhoneNumber" TEXT,
     "IsActive" BOOLEAN DEFAULT TRUE,
-    "CreatedAt" TIMESTAMP DEFAULT NOW()
+    "CreatedAt" TIMESTAMP DEFAULT NOW(),
+    "UpdatedAt" TIMESTAMP
 );
 
--- Tạo bảng Users
-CREATE TABLE IF NOT EXISTS "Users" (
+-- ===============================
+-- USERS
+-- ===============================
+CREATE TABLE "Users" (
     "Id" SERIAL PRIMARY KEY,
-    "Username" TEXT NOT NULL,
+    "Username" TEXT NOT NULL UNIQUE,
     "PasswordHash" TEXT NOT NULL,
     "FullName" TEXT,
     "Role" TEXT NOT NULL,
     "PhoneNumber" TEXT,
     "Points" INTEGER DEFAULT 0,
-    "TenantId" INTEGER REFERENCES "Tenants"("Id"),
+    "TenantId" INTEGER REFERENCES "Tenants"("Id") ON DELETE SET NULL,
     "CreatedAt" TIMESTAMP DEFAULT NOW()
 );
 
--- 1. Tạo Nhà Hàng (Chắc chắn ID sẽ là 1 vì vừa DROP xong)
-INSERT INTO "Tenants" ("Name", "Address", "IsActive", "CreatedAt")
-VALUES ('Nhà Hàng Demo', '123 Đường Mẫu, TP.HCM', true, NOW());
+-- ===============================
+-- SEED DATA
+-- ===============================
 
--- 2. Tạo User (Admin, Owner, Khách)
-INSERT INTO "Users" ("Username", "PasswordHash", "FullName", "Role", "TenantId", "PhoneNumber", "Points", "CreatedAt")
-VALUES 
-('admin1', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Admin Chính', 'Admin', NULL, '0901000001', 0, NOW()),
-('owner_demo', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Chủ Quán Demo', 'Owner', 1, '0909999999', 0, NOW()),
-('khachhang1', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Khách VIP', 'Customer', NULL, '0908888888', 100, NOW());
-ALTER TABLE "Tenants" ADD COLUMN IF NOT EXISTS "LogoUrl" text;
-ALTER TABLE "Tenants" ADD COLUMN IF NOT EXISTS "OwnerName" text;
-ALTER TABLE "Tenants" ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone;
--- Thêm cột mới vào bảng Tenants để lưu thông tin chủ sở hữu
-ALTER TABLE "Tenants" 
-ADD COLUMN "OwnerName" TEXT,
-ADD COLUMN "PhoneNumber" TEXT,
-ADD COLUMN "UpdatedAt" TIMESTAMP;
+-- Tenant demo
+INSERT INTO "Tenants"
+("Name", "Address", "OwnerName", "PhoneNumber", "IsActive")
+VALUES
+('Nhà Hàng Demo', '123 Đường Mẫu, TP.HCM', 'Chủ Quán Demo', '0909999999', TRUE);
 
--- Cập nhập dữ liệu demo có thông tin chủ sở hữu
-UPDATE "Tenants" 
-SET "OwnerName" = 'Chủ Quán Demo', "PhoneNumber" = '0909999999' 
-WHERE "Id" = 1;
+-- Users
+INSERT INTO "Users"
+("Username", "PasswordHash", "FullName", "Role", "TenantId", "PhoneNumber", "Points")
+VALUES
+('admin1', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Admin Chính', 'Admin', NULL, '0901000001', 0),
+('owner_demo', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Chủ Quán Demo', 'Owner', 1, '0909999999', 0),
+('khachhang1', '$2b$10$KqCaahb1QGAbwsDsIb.vSuTCmNC7M7G3lWnWi.xh2z7RBBOM7WILC', 'Khách VIP', 'Customer', NULL, '0908888888', 100);
