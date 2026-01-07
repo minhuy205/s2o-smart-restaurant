@@ -1,0 +1,97 @@
+/* clients/restaurant-management-web/styles/Cashier.module.css */
+.container {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.title {
+    margin-top: 5px;
+    color: #2c3e50;
+}
+
+.refreshBtn {
+    padding: 10px 20px;
+    cursor: pointer;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.cardHeader {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+}
+
+.tableName {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.statusBadge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    background-color: #eee;
+    color: #555;
+}
+
+.cardBody {
+    padding: 15px;
+    min-height: 80px;
+}
+
+.itemList {
+    padding-left: 20px;
+    margin: 0;
+    color: #555;
+}
+
+.cardFooter {
+    padding: 15px;
+    background-color: #fafafa;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.totalRow {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.payBtn {
+    width: 100%;
+    padding: 12px;
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+}

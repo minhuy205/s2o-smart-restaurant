@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
+import styles from '../styles/Home.module.css'; // Import CSS
 
 export default function Home() {
-  // ... (Giữ nguyên phần State, Effect và hàm Login/Logout như cũ)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [username, setUsername] = useState('');
@@ -43,68 +43,65 @@ export default function Home() {
   };
 
   if (!isLoggedIn) {
-    // ... (Giữ nguyên form login)
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f0f2f5', fontFamily: 'Arial' }}>
-        <form onSubmit={handleLogin} style={{ padding: 40, backgroundColor: 'white', borderRadius: 8, boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: 350 }}>
-          <h2 style={{ textAlign: 'center', color: '#333' }}>S2O Restaurant Login</h2>
-          {loginError && <p style={{ color: 'red', fontSize: 14, textAlign: 'center' }}>{loginError}</p>}
-          <div style={{ marginBottom: 15 }}>
-            <label style={{ display: 'block', marginBottom: 5 }}>Tài khoản:</label>
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} style={inputStyle} required />
+      <div className={styles.loginContainer}>
+        <form onSubmit={handleLogin} className={styles.loginForm}>
+          <h2 className={styles.title}>S2O Restaurant Login</h2>
+          {loginError && <p className={styles.error}>{loginError}</p>}
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Tài khoản:</label>
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className={styles.input} required />
           </div>
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', marginBottom: 5 }}>Mật khẩu:</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} required />
+            <label className={styles.label}>Mật khẩu:</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={styles.input} required />
           </div>
-          <button type="submit" style={{ ...btnStyle, width: '100%', backgroundColor: '#007bff' }}>Đăng nhập</button>
+          <button type="submit" className={styles.button}>Đăng nhập</button>
         </form>
       </div>
     );
   }
 
-  // --- RENDER DASHBOARD (CÓ THÊM NÚT HISTORY) ---
   return (
-    <div style={{ padding: 40, fontFamily: 'Arial, sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className={styles.container}>
+      <div className={styles.header}>
         <div>
           <h1 style={{ marginBottom: 5 }}>Restaurant Management Web - S2O</h1>
           <p style={{ margin: 0, color: '#666' }}>
             Xin chào, <strong>{user?.fullName}</strong> ({user?.role}) 
             <br /> 
-            Quán: <span style={{ color: '#d35400', fontWeight: 'bold' }}>{user?.tenantName}</span>
+            Quán: <span className={styles.tenantName}>{user?.tenantName}</span>
           </p>
         </div>
-        <button onClick={handleLogout} style={{ ...btnStyle, backgroundColor: '#dc3545' }}>Đăng xuất</button>
+        <button onClick={handleLogout} className={styles.logoutBtn}>Đăng xuất</button>
       </div>
       
       <hr style={{ margin: '20px 0' }} />
       
       <h2>Chọn chức năng làm việc:</h2>
-      <div style={{ display: 'flex', gap: 20, marginTop: 20, flexWrap: 'wrap' }}>
+      <div className={styles.grid}>
         
-        <Link href="/menu" style={cardStyle}>
+        <Link href="/menu" className={styles.card}>
           <h3>🥗 Quản lý Menu</h3>
           <p>Thêm, sửa, xoá món ăn.</p>
         </Link>
 
-        <Link href="/tables" style={{...cardStyle, backgroundColor: '#e8f5e9', borderColor: '#2ecc71'}}>
+        <Link href="/tables" className={`${styles.card} ${styles.cardGreen}`}>
           <h3>🪑 Sơ Đồ Bàn (POS)</h3>
           <p>Xem bàn & Gọi món.</p>
         </Link>
 
-        <Link href="/kitchen" style={cardStyle}>
+        <Link href="/kitchen" className={styles.card}>
           <h3>🔥 Bếp (KDS)</h3>
           <p>Trạng thái nấu.</p>
         </Link>
 
-        <Link href="/cashier" style={cardStyle}>
+        <Link href="/cashier" className={styles.card}>
           <h3>💵 Thu Ngân</h3>
           <p>Thanh toán hoá đơn.</p>
         </Link>
 
-        {/* NÚT MỚI */}
-        <Link href="/history" style={{...cardStyle, backgroundColor: '#fff8e1', borderColor: '#f1c40f'}}>
+        <Link href="/history" className={`${styles.card} ${styles.cardYellow}`}>
           <h3>📊 Lịch Sử & Doanh Thu</h3>
           <p>Xem đơn đã bán & Tổng tiền.</p>
         </Link>
@@ -113,10 +110,3 @@ export default function Home() {
     </div>
   );
 }
-
-const inputStyle = { width: '100%', padding: '10px', borderRadius: 4, border: '1px solid #ccc', boxSizing: 'border-box' };
-const btnStyle = { padding: '10px 20px', border: 'none', borderRadius: 4, cursor: 'pointer', color: 'white', fontWeight: 'bold' };
-const cardStyle = {
-  border: '1px solid #ddd', padding: '20px', borderRadius: '8px',
-  textDecoration: 'none', color: 'black', width: '250px', cursor: 'pointer', backgroundColor: '#fafafa', marginBottom: 20
-};
