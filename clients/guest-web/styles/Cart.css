@@ -1,0 +1,80 @@
+/* clients/guest-web/styles/Cart.css */
+
+.cart-floating-btn {
+  position: fixed; bottom: 30px; right: 20px; z-index: 100;
+  background: var(--primary); color: white;
+  border: none; border-radius: 50px;
+  padding: 12px 24px;
+  font-weight: 700; font-size: 15px;
+  box-shadow: var(--shadow-float);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  transition: transform 0.2s;
+}
+.cart-floating-btn:active { transform: scale(0.95); }
+
+.cart-backdrop {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(2px);
+  z-index: 199;
+}
+
+.cart-sheet {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: white;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  padding: 24px;
+  z-index: 200;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex; flex-direction: column;
+  max-height: 85vh;
+}
+
+.cart-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 15px; margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.cart-title { font-size: 20px; font-weight: 800; margin: 0; }
+.btn-close-cart {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #F3F4F6; border: none; color: #6B7280;
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+.cart-items-list { flex: 1; overflow-y: auto; padding-right: 5px; }
+
+.cart-item { padding: 16px 0; border-bottom: 1px dashed var(--border); }
+.cart-item-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+
+.qty-control {
+  display: flex; align-items: center; gap: 8px;
+  background: #F3F4F6; padding: 4px; border-radius: 10px;
+}
+.btn-qty {
+  width: 28px; height: 28px; background: white; border: none; border-radius: 7px;
+  box-shadow: var(--shadow-sm); cursor: pointer; font-weight: bold;
+}
+
+.cart-note-input {
+  width: 100%; padding: 10px 12px;
+  background: #F9FAFB; border: 1px solid var(--border);
+  border-radius: 10px; font-size: 13px; outline: none; box-sizing: border-box;
+}
+.cart-note-input:focus { border-color: var(--primary); background: white; }
+
+.cart-footer-section {
+  padding-top: 15px; border-top: 2px solid #F3F4F6;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.btn-checkout {
+  background: var(--primary); color: white;
+  border: none; padding: 14px 32px;
+  border-radius: 16px; font-weight: 700; font-size: 16px;
+  box-shadow: var(--shadow-float); cursor: pointer;
+}
+
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }

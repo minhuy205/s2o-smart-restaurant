@@ -1,0 +1,36 @@
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); z-index: 1000;
+  display: flex; align-items: flex-end; justify-content: center;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+@media (min-width: 768px) { .modal-overlay { align-items: center; } }
+
+.modal-sheet {
+  background: white; width: 100%; max-width: 500px;
+  border-radius: 24px 24px 0 0; overflow: hidden;
+  display: flex; flex-direction: column; max-height: 90vh;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (min-width: 768px) { .modal-sheet { border-radius: 24px; } }
+
+.modal-body { padding: 20px; overflow-y: auto; }
+.modal-title { font-size: 22px; font-weight: 800; margin: 0; color: var(--text-main); }
+.modal-price { font-size: 18px; color: var(--primary); font-weight: 700; margin-bottom: 10px; }
+.note-area {
+  width: 100%; padding: 12px; background: #F9FAFB; border: 1px solid var(--border);
+  border-radius: 12px; font-family: inherit; resize: none; box-sizing: border-box;
+}
+.note-area:focus { border-color: var(--primary); background: white; outline: none; }
+
+.modal-footer {
+  padding: 15px 20px; border-top: 1px solid #F3F4F6;
+  display: flex; gap: 15px; align-items: center; background: white;
+}
+.btn-primary-action {
+  flex: 1; background: var(--primary); color: white;
+  border: none; padding: 14px; border-radius: 16px;
+  font-weight: 700; font-size: 16px; cursor: pointer;
+}

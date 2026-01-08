@@ -1,32 +1,14 @@
-// clients/guest-web/pages/index.js
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
-
-// Import Firebase (Logic lấy token thật)
 import { requestForToken } from '../utils/firebaseConfig'; 
 
-import { 
-    globalStyles, headerStyle, categoryNavStyle, categoryTabStyle, 
-    btnSecondaryStyle, SECONDARY_COLOR, PRIMARY_COLOR, TEXT_COLOR,
-    menuGridContainerStyle, successModalContainer, successModalContent, 
-    successIconStyle, btnSuccessStyle, FONT_FAMILY, 
-    actionContainerStyle, headerInnerStyle,
-    headerInfoStyle, headerTitleStyle, tableBadgeStyle 
-} from '../components/Menu/Styles'; 
-
-import OrderHistory from '../components/OrderHistory';
 import CartFooter from '../components/Cart/CartFooter';
 import ItemCard from '../components/Menu/ItemCard'; 
+import ItemDetailModal from '../components/Menu/ItemDetailModal'; 
+import OrderHistory from '../components/OrderHistory'; 
 
-// --- MAPPING DANH MỤC ---
-const CATEGORY_MAP = {
-    1: 'Món nước',
-    2: 'Món khô',
-    3: 'Đồ uống',
-    4: 'Tráng miệng',
-    5: 'Khác'
-};
+const CATEGORY_MAP = { 1: 'Món nước', 2: 'Món khô', 3: 'Đồ uống', 4: 'Tráng miệng', 5: 'Khác' };
 
 export default function GuestMenu() {
   const router = useRouter();
@@ -34,230 +16,158 @@ export default function GuestMenu() {
 
   const [allMenuItems, setAllMenuItems] = useState([]); 
   const [tableInfo, setTableInfo] = useState(null);
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [orderSent, setOrderSent] = useState(false); 
-  const [showHistory, setShowHistory] = useState(false); 
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
-  const [isCartOpen, setIsCartOpen] = useState(true); 
-  
-  // State lưu Token thật của thiết bị khách
+  const [isCartOpen, setIsCartOpen] = useState(false); 
   const [deviceToken, setDeviceToken] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null); 
+  const [showHistory, setShowHistory] = useState(false);  
 
-  // 1. Load dữ liệu nhà hàng
   useEffect(() => {
-    if (tenantId && tableId) {
-      loadRestaurantData(tenantId, tableId);
-    }
+    if (tenantId && tableId) loadRestaurantData(tenantId, tableId);
   }, [tenantId, tableId]);
 
-  // 2. Lấy Device Token ngay khi khách vào Web (Xin quyền thông báo)
   useEffect(() => {
-    // Chỉ chạy ở Client
-    if (typeof window !== 'undefined') {
-        const initFCM = async () => {
-            const token = await requestForToken();
-            if (token) {
-                setDeviceToken(token); // Lưu token thật vào state
-            }
-        };
-        initFCM();
-    }
+    if (typeof window !== 'undefined') requestForToken().then(token => token && setDeviceToken(token));
   }, []);
 
   const loadRestaurantData = async (tid, tbid) => {
     setLoading(true);
-    let tempTableInfo = { name: `Bàn #${tbid}` };
-
-    const tenantData = await fetchAPI(SERVICES.AUTH, `/api/tenants/${tid}`);
-    if (tenantData) {
-        tempTableInfo = { ...tempTableInfo, restaurantName: tenantData.name, address: tenantData.address };
+    let tempInfo = { name: `Bàn #${tbid}` };
+    
+    // 1. Lấy thông tin Tenant (Tên, Địa chỉ, Logo)
+    const tenant = await fetchAPI(SERVICES.AUTH, `/api/tenants/${tid}`);
+    if(tenant) {
+        tempInfo = { 
+            ...tempInfo, 
+            restaurantName: tenant.name,
+            address: tenant.address || 'Đang cập nhật địa chỉ',
+            logoUrl: tenant.logoUrl // ✅ Lấy Logo từ DB (Base64 hoặc URL)
+        };
     }
     
-    const menuData = await fetchAPI(SERVICES.MENU, `/api/menu?tenantId=${tid}`);
+    const menu = await fetchAPI(SERVICES.MENU, `/api/menu?tenantId=${tid}`);
+    if (menu) setAllMenuItems(menu.map(i => ({...i, category: CATEGORY_MAP[i.categoryId] || i.category || 'Khác'})));
     
-    if (menuData && menuData.length > 0) {
-        setAllMenuItems(menuData.map(item => {
-            const catId = item.categoryId || item.CategoryId; 
-            let catName = CATEGORY_MAP[catId];
-            if (!catName) {
-                if (item.category) {
-                    catName = item.category; 
-                } else {
-                    const name = item.name.toLowerCase();
-                    if (name.includes('phở') || name.includes('bún') || name.includes('hủ tiếu')) catName = 'Món nước';
-                    else if (name.includes('cơm') || name.includes('mì')) catName = 'Món khô';
-                    else if (name.includes('trà') || name.includes('sữa') || name.includes('nước')) catName = 'Đồ uống';
-                    else if (name.includes('kem') || name.includes('chè')) catName = 'Tráng miệng';
-                    else catName = 'Khác';
-                }
-            }
-            return { ...item, category: catName };
-        }));
-    } else {
-        setAllMenuItems([
-            { id: 1, name: "Phở Bò Tái Đặc Biệt", price: 55000, category: "Món nước", imageUrl: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500" },
-            { id: 2, name: "Bún Chả Hà Nội", price: 70000, category: "Món nước", imageUrl: "https://images.unsplash.com/photo-1562967914-608f82629710?w=500" },
-            { id: 3, name: "Cơm Tấm Sườn Bì Chả", price: 60000, category: "Món khô", imageUrl: "https://via.placeholder.com/300x400/f9f3f3/FF5E57?text=Com+Tam" },
-            { id: 5, name: "Trà Đào Cam Sả Hạt Chia", price: 40000, category: "Đồ uống", imageUrl: "https://via.placeholder.com/300x400/f3f3f9/1E272E?text=Tra+Dao" },
-        ]);
+    const tables = await fetchAPI(SERVICES.MENU, `/api/tables?tenantId=${tid}`);
+    if (tables) {
+        const found = tables.find(t => t.id == tbid);
+        if (found) tempInfo = { ...tempInfo, name: found.name };
     }
-
-    const tablesData = await fetchAPI(SERVICES.MENU, `/api/tables?tenantId=${tid}`);
-    if (tablesData) {
-        const found = tablesData.find(t => t.id == tbid);
-        if (found) tempTableInfo = { ...tempTableInfo, name: found.name };
-    }
-    setTableInfo(tempTableInfo);
+    setTableInfo(tempInfo);
     setLoading(false);
   };
-  
-  const categories = useMemo(() => {
-    const uniqueCats = [...new Set(allMenuItems.map(item => item.category))].filter(Boolean);
-    const order = ['Món nước', 'Món khô', 'Đồ uống', 'Tráng miệng', 'Khác'];
-    uniqueCats.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-    return ['Tất cả', ...uniqueCats]; 
+
+  const categories = useMemo(() => ['Tất cả', ...[...new Set(allMenuItems.map(i => i.category))].filter(Boolean)], [allMenuItems]);
+  const groupedItems = useMemo(() => {
+      const groups = {};
+      allMenuItems.forEach(item => {
+          if(!groups[item.category]) groups[item.category] = [];
+          groups[item.category].push(item);
+      });
+      return groups;
   }, [allMenuItems]);
 
-  const groupedMenuItems = useMemo(() => {
-    return allMenuItems.reduce((acc, item) => {
-      const cat = item.category || 'Khác';
-      if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(item);
-      return acc;
-    }, {});
-  }, [allMenuItems]);
-  
-  const filteredMenuItems = useMemo(() => {
-    if (selectedCategory === 'Tất cả') return groupedMenuItems; 
-    return allMenuItems.filter(item => item.category === selectedCategory);
-  }, [allMenuItems, selectedCategory, groupedMenuItems]);
-
-  const addToCart = (item) => {
-    const existing = cart.find(x => x.id === item.id);
-    if (existing) {
-      setCart(cart.map(x => x.id === item.id ? { ...x, quantity: x.quantity + 1 } : x));
-    } else {
-      setCart([...cart, { ...item, quantity: 1, name: item.name, price: item.price }]); 
-    }
-    if (!isCartOpen) setIsCartOpen(true);
+  const handleAddToCart = (item, quantity, note = '') => {
+      setCart(prev => {
+          const idx = prev.findIndex(x => x.id === item.id && x.note === note);
+          if (idx >= 0) { const newCart = [...prev]; newCart[idx].quantity += quantity; return newCart; }
+          return [...prev, { ...item, quantity, note, cartId: `${item.id}_${Date.now()}` }];
+      });
+      setIsCartOpen(true);
   };
 
-  const updateQuantity = (itemId, change) => {
-    setCart(cart.map(item => item.id === itemId ? { ...item, quantity: item.quantity + change } : item).filter(i => i.quantity > 0));
-  };
+  const updateQuantity = (cartId, delta) => setCart(prev => prev.map(i => i.cartId === cartId ? { ...i, quantity: i.quantity + delta } : i).filter(i => i.quantity > 0));
+  const updateNote = (cartId, newNote) => setCart(prev => prev.map(i => i.cartId === cartId ? { ...i, note: newNote } : i));
 
-  const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const calculateTotalItems = () => cart.reduce((sum, item) => sum + item.quantity, 0);
-
-  // --- HÀM GỬI ĐƠN HÀNG (QUAN TRỌNG) ---
   const handlePlaceOrder = async () => {
-    if (!tableInfo || cart.length === 0) return alert("Không có món!");
-    
-    // Tạo Payload gửi xuống Backend
+    if (!cart.length) return;
     const payload = {
-      tableName: tableInfo.name, 
-      totalAmount: calculateTotal(),
-      status: "Pending",
-      tenantId: Number(tenantId),
-      tableId: Number(tableId),
-      
-      // --- TOKEN THẬT: Gửi kèm token lấy được từ Firebase ---
-      deviceToken: deviceToken, 
-      // -----------------------------------------------------
-
-      items: cart.map(i => ({ menuItemName: i.name, price: i.price, quantity: i.quantity, note: "" }))
+        tableName: tableInfo?.name, totalAmount: cart.reduce((s, i) => s + i.price * i.quantity, 0),
+        status: "Pending", tenantId: Number(tenantId), tableId: Number(tableId), deviceToken: deviceToken,
+        items: cart.map(i => ({ menuItemName: i.name, price: i.price, quantity: i.quantity, note: i.note || "" }))
     };
-
     const res = await fetchAPI(SERVICES.ORDER, '/api/orders', { method: 'POST', body: JSON.stringify(payload) });
-    if (res?.id) {
-        await fetchAPI(SERVICES.MENU, `/api/tables/${tableId}/status`, { method: 'PUT', body: JSON.stringify({ status: 'Occupied', currentOrderId: res.id }) });
-        setOrderSent(true);
-        setCart([]); 
-    }
+    if(res) { setOrderSent(true); setCart([]); setIsCartOpen(false); }
   };
-  
-  if (!tenantId || !tableId) return <div style={{padding:40, textAlign:'center', fontFamily: FONT_FAMILY, color: TEXT_COLOR}}>Vui lòng quét mã QR!</div>;
-  if (loading) return <div style={{padding:40, textAlign:'center', fontFamily: FONT_FAMILY, color: TEXT_COLOR}}>🚀 Đang chuẩn bị thực đơn...</div>;
-  
-  if (showHistory) return <OrderHistory tenantId={tenantId} tableId={tableInfo?.name} onClose={() => setShowHistory(false)} />;
 
-  const categoryHeadingStyle = { 
-      padding: '0 25px', 
-      margin: '25px 0 10px 0', 
-      fontSize: '18px', 
-      color: SECONDARY_COLOR, 
-      fontWeight: '800',
-      letterSpacing: '-0.5px'
-  };
+  if(loading) return <div style={{padding:40, textAlign:'center'}}>Đang tải...</div>;
 
   return (
-    <div style={globalStyles}>
-      <header style={headerStyle}>
-        <div style={headerInnerStyle}>
-          <div style={headerInfoStyle}>
-            <h3 style={headerTitleStyle}>{tableInfo?.restaurantName || 'Nhà hàng'}</h3>
-            <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px'}}>
-                <div style={tableBadgeStyle}>
-                    <span style={{width: '8px', height: '8px', borderRadius: '50%', backgroundColor: PRIMARY_COLOR, marginRight: '8px', boxShadow: `0 0 10px ${PRIMARY_COLOR}`}}></span>
-                    {tableInfo?.name || `Bàn #${tableId}`}
-                </div>
-                {tableInfo?.address && <span style={{fontSize: '12px', color: '#7F8C8D', fontWeight: '500'}}>{tableInfo?.address}</span>}
-            </div>
+    <div>
+      {/* HEADER CÓ BACKGROUND IMAGE */}
+      <div className="header-container">
+          {/* Lớp nền mờ từ Logo */}
+          <div className="header-bg" style={{backgroundImage: tableInfo?.logoUrl ? `url(${tableInfo.logoUrl})` : 'none'}}></div>
+          
+          <div className="header-content">
+              <div className="header-top">
+                  <div className="restaurant-info-group">
+                      {/* Logo Avatar */}
+                      <div className="logo-wrapper">
+                           <img 
+                                src={tableInfo?.logoUrl || 'https://placehold.co/100x100?text=S2O'} 
+                                className="restaurant-logo" 
+                                alt="logo" 
+                                onError={(e) => e.target.style.display='none'} 
+                           />
+                      </div>
+                      
+                      <div className="text-info">
+                          <h3 className="restaurant-name">{tableInfo?.restaurantName}</h3>
+                          <span className="restaurant-address">📍 {tableInfo?.address}</span>
+                          <span className="table-badge">{tableInfo?.name}</span>
+                      </div>
+                  </div>
+                  
+                  {/* Nút Lịch sử */}
+                  <button className="btn-history-pro" onClick={() => setShowHistory(true)} title="Lịch sử">
+                    📜
+                  </button>
+              </div>
+              
+              {/* Menu Categories */}
+              <div className="category-nav">
+                  {categories.map(cat => (
+                      <button key={cat} className={`cat-btn ${selectedCategory === cat ? 'active' : ''}`} onClick={() => setSelectedCategory(cat)}>{cat}</button>
+                  ))}
+              </div>
           </div>
-          <div style={actionContainerStyle}>
-            <button onClick={() => setShowHistory(true)} style={btnSecondaryStyle}>
-                📜 Lịch sử
-            </button>
-          </div>
-        </div>
-        
-        <nav style={categoryNavStyle}>
-          {categories.map(cat => (
-            <button key={cat} onClick={() => setSelectedCategory(cat)} style={categoryTabStyle(cat === selectedCategory)}>{cat}</button>
-          ))}
-        </nav>
-      </header>
+      </div>
 
-      {/* Hiển thị thông báo yêu cầu bật quyền nếu chưa có Token (Optional UX) */}
-      {!deviceToken && (
-        <div style={{backgroundColor: '#fff3cd', color: '#856404', padding: '10px', fontSize: '13px', textAlign: 'center'}}>
-          ⚠️ Vui lòng nhấn <b>"Cho phép"</b> thông báo để nhận tin khi món ăn xong!
-        </div>
-      )}
-
-      <main style={{ padding: '10px 0' }}>
+      {/* CONTENT */}
+      <div style={{paddingTop: '20px'}}>
         {selectedCategory === 'Tất cả' ? (
-            categories.filter(cat => cat !== 'Tất cả' && groupedMenuItems[cat] && groupedMenuItems[cat].length > 0).map(cat => (
-                <section key={cat}>
-                    <h4 style={categoryHeadingStyle}>{cat}</h4>
-                    <div style={menuGridContainerStyle}>
-                        {groupedMenuItems[cat].map(item => <ItemCard key={item.id} item={item} addToCart={addToCart} />)}
+            categories.filter(c => c !== 'Tất cả').map(cat => groupedItems[cat] && (
+                <div key={cat} className="menu-section">
+                    <div className="menu-section-title">{cat}</div>
+                    <div className="menu-grid">
+                        {groupedItems[cat].map(item => <ItemCard key={item.id} item={item} onClick={setSelectedItem} />)}
                     </div>
-                </section>
+                </div>
             ))
         ) : (
-            <div style={menuGridContainerStyle}>
-                {filteredMenuItems.map(item => <ItemCard key={item.id} item={item} addToCart={addToCart} />)}
+            <div className="menu-grid">
+                {allMenuItems.filter(i => i.category === selectedCategory).map(item => <ItemCard key={item.id} item={item} onClick={setSelectedItem} />)}
             </div>
         )}
-      </main>
+      </div>
 
-      <CartFooter 
-        cart={cart} isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} 
-        handlePlaceOrder={handlePlaceOrder} updateQuantity={updateQuantity} 
-        calculateTotal={calculateTotal} calculateTotalItems={calculateTotalItems} 
-      />
-
+      {/* MODALS */}
+      {selectedItem && <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} />}
+      {showHistory && <OrderHistory tenantId={tenantId} tableId={tableInfo?.name} address={tableInfo?.address} onClose={() => setShowHistory(false)} />}
+      <CartFooter cart={cart} isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} handlePlaceOrder={handlePlaceOrder} updateQuantity={updateQuantity} updateNote={updateNote} calculateTotal={() => cart.reduce((s, i) => s + i.price * i.quantity, 0)} />
+      
       {orderSent && (
-        <div style={successModalContainer}>
-            <div style={successModalContent}>
-                <div style={successIconStyle}>✓</div>
-                <h3 style={{ margin: '0 0 15px 0', color: SECONDARY_COLOR, fontWeight: '800', fontSize: '20px' }}>Tuyệt vời!</h3>
-                <p style={{ fontSize: '14px', color: TEXT_COLOR, lineHeight: '1.6' }}>Đơn hàng của bạn đã được gửi đến bếp. Chúc bạn ngon miệng!</p>
-                <button onClick={() => setOrderSent(false)} style={btnSuccessStyle}>Đồng ý</button>
-            </div>
-        </div>
+          <div className="history-overlay">
+              <div style={{background:'white', padding:30, borderRadius:24, textAlign:'center', width:'80%', maxWidth:300}}>
+                  <div style={{fontSize:50, color:'#10B981', marginBottom:10}}>✓</div>
+                  <h3>Thành công!</h3>
+                  <button className="item-add-btn" style={{width:'100%', borderRadius:16}} onClick={() => setOrderSent(false)}>OK</button>
+              </div>
+          </div>
       )}
     </div>
   );

@@ -1,0 +1,62 @@
+.history-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(17, 24, 39, 0.75);
+  z-index: 2000;
+  display: flex; justify-content: center; align-items: center;
+  padding: 20px;
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.history-modal {
+  background: #F9FAFB;
+  width: 100%; max-width: 500px; max-height: 85vh;
+  border-radius: 24px;
+  display: flex; flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.history-header {
+  padding: 20px 24px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  background: white; border-bottom: 1px solid var(--border);
+}
+.history-title { font-size: 20px; font-weight: 800; margin: 0; }
+.history-address { font-size: 13px; color: var(--text-sub); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+
+.btn-close-dialog {
+  background: #F3F4F6; border: none; width: 36px; height: 36px; border-radius: 50%;
+  color: var(--text-sub); font-size: 18px; cursor: pointer;
+}
+
+.history-content { padding: 20px; overflow-y: auto; flex: 1; }
+
+.order-card-pro {
+  background: white; border-radius: 16px; padding: 16px; margin-bottom: 16px;
+  box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+}
+
+.order-header-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border);
+}
+.order-time { font-size: 13px; color: var(--text-sub); font-weight: 500; }
+.status-badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+
+.order-item-list { display: flex; flex-direction: column; gap: 8px; }
+.order-item-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--text-main); }
+.item-qty { font-weight: 800; color: var(--primary); margin-right: 8px; }
+
+.order-footer-row {
+  margin-top: 15px; padding-top: 12px; border-top: 1px solid #F3F4F6;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.total-label { font-size: 13px; color: var(--text-sub); }
+.total-value { font-size: 18px; font-weight: 800; color: var(--primary); }
+
+.empty-history { text-align: center; padding: 60px 20px; color: var(--text-sub); }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }

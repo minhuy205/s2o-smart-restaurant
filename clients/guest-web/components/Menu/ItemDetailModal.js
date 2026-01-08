@@ -16,22 +16,15 @@ const ItemCard = ({ item, onClick }) => (
         </div>
        
         <div className="item-content">
-            {/* Nhóm Tên + Mô tả */}
             <div>
                 <div className="item-name" title={item.name}>
                     {item.name}
                 </div>
                 
-                {/* ✅ HIỂN THỊ MÔ TẢ TRỰC TIẾP */}
+                {/* ✅ Thêm chữ "Mô tả:" đậm trước nội dung */}
                 <div className="item-desc" title={item.description}>
-                    {item.description ? (
-                        <>
-                            <span className="desc-label">Mô tả: </span>
-                            {item.description}
-                        </>
-                    ) : (
-                        <span style={{fontStyle:'italic', color:'#D1D5DB'}}>Món ngon mời bạn thử...</span>
-                    )}
+                    <span style={{fontWeight:'700', color:'#374151'}}>Mô tả: </span>
+                    {item.description || "Món ngon mời bạn thưởng thức"}
                 </div>
             </div>
             

@@ -1,0 +1,97 @@
+/* clients/guest-web/styles/ItemCard.css */
+
+.item-card {
+  background-color: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(0,0,0,0.02);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  transition: transform 0.15s ease;
+  cursor: pointer;
+}
+
+.item-card:active { transform: scale(0.97); }
+
+/* Ảnh vuông (Tạo dáng đứng) */
+.item-img-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1; 
+  background: #F3F4F6;
+}
+
+.item-img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+
+/* Tag danh mục */
+.item-cat-tag {
+  position: absolute; top: 8px; left: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  padding: 3px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 700;
+  backdrop-filter: blur(4px);
+  z-index: 1;
+}
+
+/* Nội dung */
+.item-content {
+  padding: 12px;
+  display: flex; flex-direction: column;
+  flex-grow: 1; justify-content: space-between;
+}
+
+.item-name {
+  font-size: 14px; font-weight: 700; color: var(--text-main);
+  margin-bottom: 4px; line-height: 1.3;
+  /* Tên món 1 dòng */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ✅ Style cho Mô tả */
+.item-desc {
+  font-size: 11px;
+  color: var(--text-sub);
+  line-height: 1.4;
+  margin-bottom: 8px;
+  /* Giới hạn 2 dòng, có dấu ... nếu dài quá */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 32px; /* Chiều cao cố định để các thẻ bằng nhau */
+}
+
+/* Chữ "Mô tả:" đậm */
+.desc-label {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Footer: Giá & Nút */
+.item-footer {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  margin-top: auto;
+}
+
+.item-price {
+  font-size: 16px; font-weight: 800; color: var(--primary);
+  display: flex; align-items: baseline; gap: 2px;
+}
+
+/* Nút thêm */
+.item-add-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white; border: none;
+  font-size: 20px;
+  display: flex; align-items: center; justifyContent: center;
+  padding-bottom: 3px; cursor: pointer;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3);
+}
