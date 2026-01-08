@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import styles from '../styles/Menu.module.css';
 
+// --- 1. IMPORT FIREBASE STORAGE ---
+import { storage } from '../utils/firebaseConfig';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
 export default function MenuManagement() {
   const router = useRouter();
   const { tableId, tableName: tableNameParam } = router.query;
@@ -24,6 +28,10 @@ export default function MenuManagement() {
   const [tableName, setTableName] = useState('Khách lẻ');
   
   const [newItem, setNewItem] = useState({ name: '', price: '', categoryId: 1, imageUrl: '', description: '' });
+
+  // --- 2. THÊM STATE ĐỂ QUẢN LÝ FILE UPLOAD ---
+  const [imageFile, setImageFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem('s2o_user');
@@ -49,13 +57,14 @@ export default function MenuManagement() {
     setIsLoading(false);
   };
 
-  // ... (Logic giỏ hàng, create order, save, delete giữ nguyên)
   const openOrderModal = (item) => { setSelectedDish(item); setOrderNote(''); setOrderQty(1); setShowOrderModal(true); };
+  
   const confirmAddToCart = () => {
     if (!selectedDish) return;
     setCart(prev => [...prev, { ...selectedDish, cartId: Date.now(), quantity: orderQty, note: orderNote.trim() }]);
     setShowOrderModal(false); setSelectedDish(null);
   };
+
   const removeFromCart = (cartId) => setCart(prev => prev.filter(item => item.cartId !== cartId));
   const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
@@ -81,17 +90,91 @@ export default function MenuManagement() {
     }
   };
 
-  const handleSave = async () => { /* ... Logic giữ nguyên ... */ 
-      const payload = { ...newItem, price: Number(newItem.price), categoryId: Number(newItem.categoryId), isAvailable: true, tenantId: currentUser.tenantId, imageUrl: newItem.imageUrl || 'https://via.placeholder.com/150' };
-      let success = editingId ? await fetchAPI(SERVICES.MENU, `/api/menu/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) }) : await fetchAPI(SERVICES.MENU, '/api/menu', { method: 'POST', body: JSON.stringify(payload) });
-      if (success) { fetchMenu(currentUser.tenantId); handleCancel(); }
+  // --- 3. HÀM XỬ LÝ CHỌN FILE ---
+  const handleFileChange = (e) => {
+    if (e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    }
   };
-  const handleDelete = async (id) => { if (confirm("Xoá món này?")) { await fetchAPI(SERVICES.MENU, `/api/menu/${id}?tenantId=${currentUser.tenantId}`, { method: 'DELETE' }); fetchMenu(currentUser.tenantId); } };
+
+  // --- 4. HÀM UPLOAD ẢNH LÊN FIREBASE ---
+  const uploadImageToFirebase = async () => {
+    if (!imageFile) return newItem.imageUrl; // Nếu không chọn file mới, dùng URL cũ (nếu có)
+    
+    try {
+      const storageRef = ref(storage, `menu-images/${currentUser.tenantId}/${Date.now()}_${imageFile.name}`);
+      const snapshot = await uploadBytes(storageRef, imageFile);
+      const url = await getDownloadURL(snapshot.ref);
+      return url;
+    } catch (error) {
+      console.error("Lỗi upload ảnh:", error);
+      alert("Upload ảnh thất bại!");
+      return null;
+    }
+  };
+
+  // --- 5. CẬP NHẬT HÀM SAVE ĐỂ XỬ LÝ UPLOAD TRƯỚC KHI LƯU ---
+  const handleSave = async () => {
+    if (!newItem.name || !newItem.price) return alert("Vui lòng nhập tên và giá!");
+    
+    setIsUploading(true);
+    
+    // Upload ảnh trước
+    const uploadedUrl = await uploadImageToFirebase();
+    if (!uploadedUrl && imageFile) {
+        setIsUploading(false);
+        return; // Dừng nếu upload lỗi
+    }
+
+    const payload = { 
+        ...newItem, 
+        price: Number(newItem.price), 
+        categoryId: Number(newItem.categoryId), 
+        isAvailable: true, 
+        tenantId: currentUser.tenantId, 
+        imageUrl: uploadedUrl || 'https://via.placeholder.com/150' // Dùng link mới upload hoặc link cũ/placeholder
+    };
+
+    let success;
+    if (editingId) {
+        success = await fetchAPI(SERVICES.MENU, `/api/menu/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
+    } else {
+        success = await fetchAPI(SERVICES.MENU, '/api/menu', { method: 'POST', body: JSON.stringify(payload) });
+    }
+
+    if (success) { 
+        fetchMenu(currentUser.tenantId); 
+        handleCancel(); 
+    } else {
+        alert("Lỗi khi lưu món ăn");
+    }
+    
+    setIsUploading(false);
+  };
+
+  const handleDelete = async (id) => { 
+      if (confirm("Xoá món này?")) { 
+          await fetchAPI(SERVICES.MENU, `/api/menu/${id}?tenantId=${currentUser.tenantId}`, { method: 'DELETE' }); 
+          fetchMenu(currentUser.tenantId); 
+      } 
+  };
 
   const handleChange = (e) => setNewItem({ ...newItem, [e.target.name]: e.target.value });
   const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
-  const handleEditClick = (item) => { setNewItem({ ...item, imageUrl: item.imageUrl || '', description: item.description || '' }); setEditingId(item.id); setShowForm(true); };
-  const handleCancel = () => { setNewItem({ name: '', price: '', categoryId: 1, imageUrl: '', description: '' }); setEditingId(null); setShowForm(false); };
+  
+  const handleEditClick = (item) => { 
+      setNewItem({ ...item, imageUrl: item.imageUrl || '', description: item.description || '' }); 
+      setEditingId(item.id); 
+      setImageFile(null); // Reset file khi edit
+      setShowForm(true); 
+  };
+  
+  const handleCancel = () => { 
+      setNewItem({ name: '', price: '', categoryId: 1, imageUrl: '', description: '' }); 
+      setEditingId(null); 
+      setImageFile(null);
+      setShowForm(false); 
+  };
   
   const filteredItems = menuItems.filter(item => {
     if (filters.keyword && !item.name.toLowerCase().includes(filters.keyword.toLowerCase())) return false;
@@ -114,6 +197,7 @@ export default function MenuManagement() {
           </button>
         </div>
 
+        {/* --- 6. FORM NHẬP LIỆU CẬP NHẬT --- */}
         {showForm && (
           <div className={styles.formContainer}>
              <h4 style={{marginTop:0}}>{editingId ? 'Sửa món' : 'Thêm món'}</h4>
@@ -123,11 +207,25 @@ export default function MenuManagement() {
                <select name="categoryId" value={newItem.categoryId} onChange={handleChange} className={styles.input}>
                  <option value="1">Món nước</option><option value="2">Món khô</option><option value="3">Đồ uống</option><option value="4">Tráng miệng</option><option value="5">Khác</option>
                </select>
-               <input name="imageUrl" value={newItem.imageUrl} onChange={handleChange} placeholder="URL Ảnh" className={styles.input} />
+               
+               {/* Thay đổi input URL thành File Upload */}
+               <div className={styles.fullWidth} style={{display:'flex', gap: 10, alignItems:'center'}}>
+                   <input type="file" onChange={handleFileChange} accept="image/*" className={styles.input} />
+                   {newItem.imageUrl && !imageFile && (
+                       <img src={newItem.imageUrl} alt="Preview" style={{width: 40, height: 40, objectFit:'cover', borderRadius: 4}} />
+                   )}
+                   {imageFile && <span style={{fontSize:12, color:'green'}}>Đã chọn ảnh mới</span>}
+               </div>
+
+               {/* Vẫn giữ input URL ẩn hoặc để fallback nếu muốn */}
+               {/* <input name="imageUrl" value={newItem.imageUrl} onChange={handleChange} placeholder="URL Ảnh (hoặc upload)" className={styles.input} /> */}
+
                <input name="description" value={newItem.description} onChange={handleChange} placeholder="Mô tả chi tiết" className={`${styles.input} ${styles.fullWidth}`} />
              </div>
              <div style={{marginTop: 10, textAlign:'right'}}>
-               <button onClick={handleSave} className={`${styles.btn} ${styles.btnSave}`}>Lưu Menu</button>
+               <button onClick={handleSave} className={`${styles.btn} ${styles.btnSave}`} disabled={isUploading}>
+                   {isUploading ? 'Đang tải ảnh...' : 'Lưu Menu'}
+               </button>
              </div>
           </div>
         )}
@@ -142,7 +240,7 @@ export default function MenuManagement() {
         <div className={styles.menuGrid}>
           {filteredItems.map(item => (
             <div key={item.id} className={styles.itemCard}>
-              <img src={item.imageUrl || 'https://via.placeholder.com/150'} className={styles.itemImage} />
+              <img src={item.imageUrl || 'https://via.placeholder.com/150'} className={styles.itemImage} alt={item.name} />
               <div className={styles.itemInfo}>
                 <div style={{fontWeight:'bold'}}>{item.name}</div>
                 <div className={styles.itemDesc}>{item.description}</div>
@@ -160,7 +258,7 @@ export default function MenuManagement() {
         </div>
       </div>
       
-      {/* GIỎ HÀNG */}
+      {/* GIỎ HÀNG (Giữ nguyên) */}
       <div className={styles.sidebar}>
            <div className={styles.sidebarHeader}>
             <h3 style={{ margin: 0 }}>🛒 Đơn Hàng Mới</h3>
@@ -184,7 +282,7 @@ export default function MenuManagement() {
           </div>
       </div>
       
-      {/* MODAL ORDER */}
+      {/* MODAL ORDER (Giữ nguyên) */}
       {showOrderModal && selectedDish && (
           <div className={styles.modalOverlay}>
             <div className={styles.modalContent}>
