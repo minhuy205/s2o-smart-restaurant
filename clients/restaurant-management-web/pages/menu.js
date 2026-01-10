@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import styles from '../styles/Menu.module.css';
 
-// --- 1. IMPORT FIREBASE STORAGE ---
+// --- IMPORT FIREBASE ---
 import { storage } from '../utils/firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -20,16 +20,21 @@ export default function MenuManagement() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [filters, setFilters] = useState({ keyword: '', categoryId: 'all', minPrice: '', maxPrice: '' });
+  const [filters, setFilters] = useState({ keyword: '', categoryId: 'all' });
+  
+  // State cho Modal Order/Edit Cart
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedDish, setSelectedDish] = useState(null);
   const [orderNote, setOrderNote] = useState('');
   const [orderQty, setOrderQty] = useState(1);
+  const [editingCartId, setEditingCartId] = useState(null); // ID của item trong giỏ đang sửa (null nếu là thêm mới)
+
   const [tableName, setTableName] = useState('Khách lẻ');
   
-  const [newItem, setNewItem] = useState({ name: '', price: '', categoryId: 1, imageUrl: '', description: '' });
+  const [newItem, setNewItem] = useState({ 
+      name: '', price: '', categoryId: 1, imageUrl: '', description: '', status: 'Available' 
+  });
 
-  // --- 2. THÊM STATE ĐỂ QUẢN LÝ FILE UPLOAD ---
   const [imageFile, setImageFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -57,15 +62,64 @@ export default function MenuManagement() {
     setIsLoading(false);
   };
 
-  const openOrderModal = (item) => { setSelectedDish(item); setOrderNote(''); setOrderQty(1); setShowOrderModal(true); };
-  
-  const confirmAddToCart = () => {
-    if (!selectedDish) return;
-    setCart(prev => [...prev, { ...selectedDish, cartId: Date.now(), quantity: orderQty, note: orderNote.trim() }]);
-    setShowOrderModal(false); setSelectedDish(null);
+  // --- 1. MỞ MODAL ĐỂ THÊM MÓN MỚI ---
+  const openOrderModal = (item) => { 
+      if (item.status === 'OutOfStock' || item.status === 'ComingSoon') {
+          alert("Món này hiện không thể đặt!");
+          return;
+      }
+      setSelectedDish(item); 
+      setOrderNote(''); 
+      setOrderQty(1); 
+      setEditingCartId(null); // Reset mode sửa -> mode thêm mới
+      setShowOrderModal(true); 
   };
 
-  const removeFromCart = (cartId) => setCart(prev => prev.filter(item => item.cartId !== cartId));
+  // --- 2. MỞ MODAL ĐỂ SỬA MÓN TRONG GIỎ ---
+  const openEditCartItem = (cartItem) => {
+      setSelectedDish(cartItem); // Lấy thông tin món từ giỏ hàng
+      setOrderNote(cartItem.note || '');
+      setOrderQty(cartItem.quantity);
+      setEditingCartId(cartItem.cartId); // Đánh dấu đang sửa cartId này
+      setShowOrderModal(true);
+  };
+  
+  // --- 3. XỬ LÝ LƯU (THÊM HOẶC CẬP NHẬT) ---
+  const confirmAddToCart = () => {
+    if (!selectedDish) return;
+
+    if (editingCartId) {
+        // A. Mode Cập nhật: Tìm item trong cart và sửa lại
+        setCart(prev => prev.map(item => 
+            item.cartId === editingCartId 
+            ? { ...item, quantity: orderQty, note: orderNote.trim() } 
+            : item
+        ));
+    } else {
+        // B. Mode Thêm mới
+        setCart(prev => [...prev, { 
+            ...selectedDish, 
+            cartId: Date.now(), 
+            quantity: orderQty, 
+            note: orderNote.trim() 
+        }]);
+    }
+    
+    // Reset và đóng modal
+    setShowOrderModal(false); 
+    setSelectedDish(null);
+    setEditingCartId(null);
+  };
+
+  const removeFromCart = (cartId) => {
+      // Nếu đang sửa món này mà bấm xóa thì đóng modal luôn
+      if (editingCartId === cartId) {
+          setShowOrderModal(false);
+          setEditingCartId(null);
+      }
+      setCart(prev => prev.filter(item => item.cartId !== cartId));
+  };
+
   const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const handleCreateOrder = async () => {
@@ -90,22 +144,16 @@ export default function MenuManagement() {
     }
   };
 
-  // --- 3. HÀM XỬ LÝ CHỌN FILE ---
   const handleFileChange = (e) => {
-    if (e.target.files[0]) {
-      setImageFile(e.target.files[0]);
-    }
+    if (e.target.files[0]) setImageFile(e.target.files[0]);
   };
 
-  // --- 4. HÀM UPLOAD ẢNH LÊN FIREBASE ---
   const uploadImageToFirebase = async () => {
-    if (!imageFile) return newItem.imageUrl; // Nếu không chọn file mới, dùng URL cũ (nếu có)
-    
+    if (!imageFile) return newItem.imageUrl;
     try {
       const storageRef = ref(storage, `menu-images/${currentUser.tenantId}/${Date.now()}_${imageFile.name}`);
       const snapshot = await uploadBytes(storageRef, imageFile);
-      const url = await getDownloadURL(snapshot.ref);
-      return url;
+      return await getDownloadURL(snapshot.ref);
     } catch (error) {
       console.error("Lỗi upload ảnh:", error);
       alert("Upload ảnh thất bại!");
@@ -113,26 +161,26 @@ export default function MenuManagement() {
     }
   };
 
-  // --- 5. CẬP NHẬT HÀM SAVE ĐỂ XỬ LÝ UPLOAD TRƯỚC KHI LƯU ---
   const handleSave = async () => {
     if (!newItem.name || !newItem.price) return alert("Vui lòng nhập tên và giá!");
     
     setIsUploading(true);
     
-    // Upload ảnh trước
     const uploadedUrl = await uploadImageToFirebase();
     if (!uploadedUrl && imageFile) {
         setIsUploading(false);
-        return; // Dừng nếu upload lỗi
+        return; 
     }
+
+    const isAvailable = (newItem.status !== 'OutOfStock' && newItem.status !== 'ComingSoon');
 
     const payload = { 
         ...newItem, 
         price: Number(newItem.price), 
         categoryId: Number(newItem.categoryId), 
-        isAvailable: true, 
+        isAvailable: isAvailable, 
         tenantId: currentUser.tenantId, 
-        imageUrl: uploadedUrl || 'https://via.placeholder.com/150' // Dùng link mới upload hoặc link cũ/placeholder
+        imageUrl: uploadedUrl || 'https://via.placeholder.com/150' 
     };
 
     let success;
@@ -148,7 +196,6 @@ export default function MenuManagement() {
     } else {
         alert("Lỗi khi lưu món ăn");
     }
-    
     setIsUploading(false);
   };
 
@@ -163,14 +210,19 @@ export default function MenuManagement() {
   const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
   
   const handleEditClick = (item) => { 
-      setNewItem({ ...item, imageUrl: item.imageUrl || '', description: item.description || '' }); 
+      setNewItem({ 
+          ...item, 
+          imageUrl: item.imageUrl || '', 
+          description: item.description || '',
+          status: item.status || 'Available' 
+      }); 
       setEditingId(item.id); 
-      setImageFile(null); // Reset file khi edit
+      setImageFile(null); 
       setShowForm(true); 
   };
   
   const handleCancel = () => { 
-      setNewItem({ name: '', price: '', categoryId: 1, imageUrl: '', description: '' }); 
+      setNewItem({ name: '', price: '', categoryId: 1, imageUrl: '', description: '', status: 'Available' }); 
       setEditingId(null); 
       setImageFile(null);
       setShowForm(false); 
@@ -181,6 +233,16 @@ export default function MenuManagement() {
     if (filters.categoryId !== 'all' && item.categoryId !== Number(filters.categoryId)) return false;
     return true;
   });
+
+  const getStatusBadge = (status) => {
+    switch(status) {
+        case 'OutOfStock': return <span style={{background:'#e74c3c', color:'white', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>Hết hàng</span>;
+        case 'ComingSoon': return <span style={{background:'#f39c12', color:'white', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>Sắp có</span>;
+        case 'BestSeller': return <span style={{background:'#f1c40f', color:'black', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>🔥 Best Seller</span>;
+        case 'Promo': return <span style={{background:'#9b59b6', color:'white', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>🏷️ Khuyến mãi</span>;
+        default: return null;
+    }
+  };
 
   return (
     <div className={styles.container}>
@@ -197,7 +259,7 @@ export default function MenuManagement() {
           </button>
         </div>
 
-        {/* --- 6. FORM NHẬP LIỆU CẬP NHẬT --- */}
+        {/* --- FORM NHẬP LIỆU --- */}
         {showForm && (
           <div className={styles.formContainer}>
              <h4 style={{marginTop:0}}>{editingId ? 'Sửa món' : 'Thêm món'}</h4>
@@ -207,18 +269,21 @@ export default function MenuManagement() {
                <select name="categoryId" value={newItem.categoryId} onChange={handleChange} className={styles.input}>
                  <option value="1">Món nước</option><option value="2">Món khô</option><option value="3">Đồ uống</option><option value="4">Tráng miệng</option><option value="5">Khác</option>
                </select>
+
+               <select name="status" value={newItem.status} onChange={handleChange} className={styles.input} style={{fontWeight:'bold'}}>
+                   <option value="Available">🟢 Đang bán</option>
+                   <option value="BestSeller">🔥 Best Seller</option>
+                   <option value="Promo">🏷️ Đang khuyến mãi</option>
+                   <option value="ComingSoon">🟡 Sắp có mặt</option>
+                   <option value="OutOfStock">🔴 Hết hàng</option>
+               </select>
                
-               {/* Thay đổi input URL thành File Upload */}
                <div className={styles.fullWidth} style={{display:'flex', gap: 10, alignItems:'center'}}>
                    <input type="file" onChange={handleFileChange} accept="image/*" className={styles.input} />
                    {newItem.imageUrl && !imageFile && (
                        <img src={newItem.imageUrl} alt="Preview" style={{width: 40, height: 40, objectFit:'cover', borderRadius: 4}} />
                    )}
-                   {imageFile && <span style={{fontSize:12, color:'green'}}>Đã chọn ảnh mới</span>}
                </div>
-
-               {/* Vẫn giữ input URL ẩn hoặc để fallback nếu muốn */}
-               {/* <input name="imageUrl" value={newItem.imageUrl} onChange={handleChange} placeholder="URL Ảnh (hoặc upload)" className={styles.input} /> */}
 
                <input name="description" value={newItem.description} onChange={handleChange} placeholder="Mô tả chi tiết" className={`${styles.input} ${styles.fullWidth}`} />
              </div>
@@ -240,13 +305,26 @@ export default function MenuManagement() {
         <div className={styles.menuGrid}>
           {filteredItems.map(item => (
             <div key={item.id} className={styles.itemCard}>
-              <img src={item.imageUrl || 'https://via.placeholder.com/150'} className={styles.itemImage} alt={item.name} />
+              <div style={{position:'relative'}}>
+                  <img src={item.imageUrl || 'https://via.placeholder.com/150'} className={styles.itemImage} alt={item.name} />
+                  <div style={{position:'absolute', top:5, right:5, zIndex: 10}}>
+                      {getStatusBadge(item.status)}
+                  </div>
+              </div>
+              
               <div className={styles.itemInfo}>
                 <div style={{fontWeight:'bold'}}>{item.name}</div>
                 <div className={styles.itemDesc}>{item.description}</div>
                 <div className={styles.itemPrice}>{item.price.toLocaleString()} đ</div>
                 <div className={styles.actions}>
-                   <button onClick={() => openOrderModal(item)} className={`${styles.btn} ${styles.btnSelect}`}>+ Chọn</button>
+                   <button 
+                       onClick={() => openOrderModal(item)} 
+                       className={`${styles.btn} ${styles.btnSelect}`}
+                       disabled={item.status === 'OutOfStock' || item.status === 'ComingSoon'}
+                       style={{opacity: (item.status === 'OutOfStock' || item.status === 'ComingSoon') ? 0.5 : 1}}
+                   >
+                       {item.status === 'OutOfStock' ? 'Hết hàng' : '+ Chọn'}
+                   </button>
                 </div>
                 <div className={styles.footerActions}>
                    <span onClick={() => handleEditClick(item)} className={styles.linkEdit}>Sửa</span>
@@ -258,7 +336,7 @@ export default function MenuManagement() {
         </div>
       </div>
       
-      {/* GIỎ HÀNG (Giữ nguyên) */}
+      {/* SIDEBAR GIỎ HÀNG */}
       <div className={styles.sidebar}>
            <div className={styles.sidebarHeader}>
             <h3 style={{ margin: 0 }}>🛒 Đơn Hàng Mới</h3>
@@ -270,9 +348,27 @@ export default function MenuManagement() {
           <div className={styles.cartList}>
              {cart.map(item => (
                 <div key={item.cartId} className={styles.cartItem}>
-                   <div style={{fontWeight:'bold'}}>{item.name}</div>
-                   <div>{item.price.toLocaleString()} x {item.quantity}</div>
-                   <button onClick={() => removeFromCart(item.cartId)} className={styles.removeBtn}>Xoá</button>
+                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'start'}}>
+                       <div 
+                            style={{fontWeight:'bold', cursor:'pointer', color: '#2c3e50'}} 
+                            onClick={() => openEditCartItem(item)} // --- 4. CLICK ĐỂ SỬA ---
+                            title="Bấm để sửa món này"
+                       >
+                           {item.name} <span style={{fontSize:10, color:'#3498db'}}>✏️</span>
+                       </div>
+                       <button onClick={() => removeFromCart(item.cartId)} className={styles.removeBtn}>X</button>
+                   </div>
+                   
+                   {/* Hiển thị Note */}
+                   {item.note && (
+                       <div style={{fontSize: '11px', color: '#e67e22', fontStyle:'italic', marginTop: 2, marginBottom: 2}}>
+                           Note: {item.note}
+                       </div>
+                   )}
+
+                   <div style={{fontSize: 13, color: '#555'}}>
+                       {item.price.toLocaleString()} x {item.quantity} = {(item.price * item.quantity).toLocaleString()}
+                   </div>
                 </div>
              ))}
           </div>
@@ -282,12 +378,12 @@ export default function MenuManagement() {
           </div>
       </div>
       
-      {/* MODAL ORDER (Giữ nguyên) */}
+      {/* MODAL ORDER / EDIT */}
       {showOrderModal && selectedDish && (
           <div className={styles.modalOverlay}>
             <div className={styles.modalContent}>
                <h3>{selectedDish.name}</h3>
-               <textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} rows="3" className={styles.input} style={{marginBottom: 10}} placeholder="Ghi chú..." />
+               <textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} rows="3" className={styles.input} style={{marginBottom: 10}} placeholder="Ghi chú (ít cay, không hành...)" />
                
                <div className={styles.qtyContainer}>
                   <label>Số lượng:</label>
@@ -298,7 +394,11 @@ export default function MenuManagement() {
 
                <div style={{marginTop:10, display:'flex', justifyContent:'flex-end', gap:10}}>
                  <button onClick={()=>setShowOrderModal(false)} className={`${styles.btn} ${styles.btnClose}`}>Huỷ</button>
-                 <button onClick={confirmAddToCart} className={`${styles.btn} ${styles.btnAdd}`}>Thêm</button>
+                 
+                 {/* --- 5. NÚT THAY ĐỔI TÙY THEO MODE --- */}
+                 <button onClick={confirmAddToCart} className={`${styles.btn} ${styles.btnAdd}`}>
+                     {editingCartId ? 'Lưu thay đổi' : 'Thêm vào đơn'}
+                 </button>
                </div>
             </div>
           </div>

@@ -29,6 +29,10 @@ namespace MenuService.Controllers
         public async Task<IActionResult> CreateMenu(MenuItem item)
         {
             if (item.TenantId <= 0) return BadRequest("Invalid TenantId");
+            
+            // Đảm bảo Status có giá trị mặc định nếu null
+            if (string.IsNullOrEmpty(item.Status)) item.Status = "Available";
+
             _db.MenuItems.Add(item);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(GetMenu), new { id = item.Id }, item);
@@ -49,6 +53,9 @@ namespace MenuService.Controllers
             item.ImageUrl = updatedItem.ImageUrl;
             item.CategoryId = updatedItem.CategoryId;
             item.IsAvailable = updatedItem.IsAvailable;
+            
+            // --- MỚI: Cập nhật Status ---
+            item.Status = updatedItem.Status;
 
             await _db.SaveChangesAsync();
             return Ok(item);

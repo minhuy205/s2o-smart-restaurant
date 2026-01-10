@@ -16,6 +16,8 @@ public class MenuItem
     public int CategoryId { get; set; }
     public bool IsAvailable { get; set; } = true;
     
-    // Thêm TenantId để phân biệt nhà hàng
+    // Thêm trường Status mới
+    public string? Status { get; set; } = "Available"; // Giá trị: Available, ComingSoon, OutOfStock, BestSeller, Promo
+
     public int TenantId { get; set; }
 }
