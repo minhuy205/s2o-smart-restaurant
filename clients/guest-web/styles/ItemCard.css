@@ -2,96 +2,94 @@
 
 .item-card {
   background-color: white;
-  border-radius: 16px;
+  border: 1px solid #E8E8E8;
+  border-radius: 8px; /* Bo góc mượt hơn */
   overflow: hidden;
-  box-shadow: var(--shadow-card);
-  border: 1px solid rgba(0,0,0,0.02);
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  position: relative;
-  transition: transform 0.15s ease;
+  display: flex; flex-direction: column;
+  height: 100%; position: relative;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.item-card:active { transform: scale(0.97); }
+.item-card:active { border-color: #EE4D2D; background-color: #FFF5F2; }
+.item-disabled { opacity: 0.6; pointer-events: none; filter: grayscale(80%); }
 
-/* Ảnh vuông (Tạo dáng đứng) */
+/* Ảnh Vuông 1:1 */
 .item-img-box {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1; 
-  background: #F3F4F6;
+  position: relative; width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #f9f9f9;
+}
+.item-img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Tag "Yêu thích" - Shopee Style */
+.item-tag-fav {
+  position: absolute; top: 0; left: 0;
+  background: #EE4D2D; color: white;
+  padding: 3px 6px; font-size: 10px; font-weight: 700;
+  border-bottom-right-radius: 6px;
+  z-index: 2; box-shadow: 1px 1px 3px rgba(0,0,0,0.15);
 }
 
-.item-img {
-  width: 100%; height: 100%; object-fit: cover;
+/* Badge Trạng thái (Hết hàng, Promo...) */
+.status-badge-wrapper {
+  position: absolute; top: 5px; right: 5px; z-index: 3;
 }
-
-/* Tag danh mục */
-.item-cat-tag {
-  position: absolute; top: 8px; left: 8px;
-  background: rgba(0, 0, 0, 0.65);
-  color: white;
-  padding: 3px 8px; border-radius: 6px;
-  font-size: 10px; font-weight: 700;
-  backdrop-filter: blur(4px);
-  z-index: 1;
+.badge {
+  padding: 3px 6px; border-radius: 4px; 
+  font-size: 9px; font-weight: 700; color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  text-transform: uppercase;
 }
+/* Màu sắc Badge */
+.bg-red { background: #EF4444; }
+.bg-orange { background: #F59E0B; }
+.bg-gold { background: #FCD34D; color: #78350F; }
+.bg-purple { background: #8B5CF6; }
 
 /* Nội dung */
 .item-content {
-  padding: 12px;
+  padding: 10px;
   display: flex; flex-direction: column;
   flex-grow: 1; justify-content: space-between;
 }
 
 .item-name {
-  font-size: 14px; font-weight: 700; color: var(--text-main);
-  margin-bottom: 4px; line-height: 1.3;
-  /* Tên món 1 dòng */
+  font-size: 14px; font-weight: 600; color: #252525;
+  margin-bottom: 4px; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; min-height: 38px;
+}
+
+.item-desc-text {
+  font-size: 11px; color: #888;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-/* ✅ Style cho Mô tả */
-.item-desc {
-  font-size: 11px;
-  color: var(--text-sub);
-  line-height: 1.4;
-  margin-bottom: 8px;
-  /* Giới hạn 2 dòng, có dấu ... nếu dài quá */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  height: 32px; /* Chiều cao cố định để các thẻ bằng nhau */
-}
-
-/* Chữ "Mô tả:" đậm */
-.desc-label {
-  font-weight: 700;
-  color: var(--text-main);
+  margin-bottom: 6px;
 }
 
 /* Footer: Giá & Nút */
 .item-footer {
-  display: flex; justify-content: space-between; align-items: flex-end;
+  display: flex; justify-content: space-between; align-items: center;
   margin-top: auto;
 }
 
 .item-price {
-  font-size: 16px; font-weight: 800; color: var(--primary);
-  display: flex; align-items: baseline; gap: 2px;
+  font-size: 15px; font-weight: 700; color: #EE4D2D;
+  display: flex; align-items: flex-start;
 }
+.currency-symbol { font-size: 10px; margin-top: 2px; text-decoration: underline; margin-left: 1px; }
 
-/* Nút thêm */
+/* Nút cộng hình vuông */
 .item-add-btn {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: var(--primary);
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  background: #EE4D2D;
   color: white; border: none;
-  font-size: 20px;
+  font-size: 18px; line-height: 1;
   display: flex; align-items: center; justifyContent: center;
-  padding-bottom: 3px; cursor: pointer;
-  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3);
+  cursor: pointer;
+  transition: background 0.2s;
 }
+.item-add-btn:active { background: #D03E1E; transform: scale(0.95); }
+
+.item-out-text { font-size: 12px; font-weight: 700; color: #999; }

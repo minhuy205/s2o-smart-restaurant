@@ -1,17 +1,40 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const CartFooter = ({ 
     cart, isCartOpen, setIsCartOpen, handlePlaceOrder, 
-    updateQuantity, updateNote, calculateTotal 
+    updateQuantity, setQuantityDirect, updateNote, calculateTotal 
 }) => {
     
+    // State cục bộ để tránh giật lag khi nhập liệu
+    const [localQuantities, setLocalQuantities] = useState({});
+
+    useEffect(() => {
+        const mapping = {};
+        cart.forEach(item => mapping[item.cartId] = item.quantity);
+        setLocalQuantities(mapping);
+    }, [cart]);
+
     if (!cart || cart.length === 0) return null;
+    const totalQty = cart.reduce((s,i)=>s+i.quantity,0);
+
+    const handleInputChange = (cartId, val) => {
+        setLocalQuantities(prev => ({ ...prev, [cartId]: val }));
+    };
+
+    const handleInputBlur = (cartId) => {
+        let val = localQuantities[cartId];
+        if (val === '' || parseInt(val) <= 0) {
+            setQuantityDirect(cartId, 0); // Xóa món nếu nhập <= 0
+        } else {
+            setQuantityDirect(cartId, parseInt(val));
+        }
+    };
 
     if (!isCartOpen) {
         return (
             <button className="cart-floating-btn" onClick={() => setIsCartOpen(true)}>
                 <span style={{fontSize: '20px'}}>🛒</span>
-                <span>{cart.reduce((s,i)=>s+i.quantity,0)} món</span>
+                <span>{totalQty} món</span>
             </button>
         );
     }
@@ -35,7 +58,16 @@ const CartFooter = ({
                                 </div>
                                 <div className="qty-control">
                                     <button className="btn-qty" onClick={() => updateQuantity(item.cartId, -1)}>-</button>
-                                    <span style={{fontWeight:600, minWidth:20, textAlign:'center'}}>{item.quantity}</span>
+                                    
+                                    {/* ✅ INPUT SỐ LƯỢNG */}
+                                    <input 
+                                        className="qty-input-cart"
+                                        type="number"
+                                        value={localQuantities[item.cartId] !== undefined ? localQuantities[item.cartId] : item.quantity}
+                                        onChange={(e) => handleInputChange(item.cartId, e.target.value)}
+                                        onBlur={() => handleInputBlur(item.cartId)}
+                                    />
+
                                     <button className="btn-qty" onClick={() => updateQuantity(item.cartId, 1)}>+</button>
                                 </div>
                             </div>
