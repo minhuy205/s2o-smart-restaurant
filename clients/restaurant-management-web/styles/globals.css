@@ -1,0 +1,53 @@
+/* Thêm vào đầu file styles/globals.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary: #4F46E5; /* Indigo */
+    --primary-hover: #4338ca;
+    --bg-body: #F3F4F6; /* Xám xanh nhạt - Sang hơn trắng */
+    --bg-card: #FFFFFF;
+    --text-main: #111827;
+    --text-muted: #6B7280;
+    --success: #10B981;
+    --danger: #EF4444;
+    --warning: #F59E0B;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --radius: 12px;
+}
+
+body {
+    font-family: 'Inter', sans-serif; /* Font hiện đại */
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+}
+
+button {
+    font-family: 'Inter', sans-serif;
+    transition: all 0.2s ease;
+}
+button:active { transform: scale(0.98); }/* Thêm vào file styles/globals.css hoặc phần đầu của các file module */
+:root {
+    --primary-color: #0066cc; /* Xanh dương chuyên nghiệp */
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --bg-color: #f4f6f9; /* Màu nền xám nhẹ dịu mắt */
+    --card-bg: #ffffff;
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --border-color: #e0e0e0;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+  }

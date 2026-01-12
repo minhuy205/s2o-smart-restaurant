@@ -1,42 +1,37 @@
-// clients/restaurant-management-web/pages/menu.js
 import React, { useState, useEffect } from 'react';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import styles from '../styles/Menu.module.css';
-
-// --- IMPORT FIREBASE ---
 import { storage } from '../utils/firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function MenuManagement() {
   const router = useRouter();
   const { tableId, tableName: tableNameParam } = router.query;
-
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
 
+  // --- STATE QUẢN LÝ ---
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [filters, setFilters] = useState({ keyword: '', categoryId: 'all' });
+  // Default categoryId là 1, status là Available
+  const [newItem, setNewItem] = useState({ name: '', price: '', categoryId: 1, imageUrl: '', description: '', status: 'Available' });
   
-  // State cho Modal Order/Edit Cart
+  // State Order / Edit Cart
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedDish, setSelectedDish] = useState(null);
-  const [orderNote, setOrderNote] = useState('');
   const [orderQty, setOrderQty] = useState(1);
-  const [editingCartId, setEditingCartId] = useState(null); // ID của item trong giỏ đang sửa (null nếu là thêm mới)
-
-  const [tableName, setTableName] = useState('Khách lẻ');
+  const [orderNote, setOrderNote] = useState('');
   
-  const [newItem, setNewItem] = useState({ 
-      name: '', price: '', categoryId: 1, imageUrl: '', description: '', status: 'Available' 
-  });
+  const [isEditingCart, setIsEditingCart] = useState(false);
+  const [editingCartId, setEditingCartId] = useState(null);
 
-  const [imageFile, setImageFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null); 
   const [isUploading, setIsUploading] = useState(false);
+  const [filters, setFilters] = useState({ keyword: '', categoryId: 'all', status: 'all' });
+  const [tableName, setTableName] = useState('Khách lẻ');
 
   useEffect(() => {
     const userStr = localStorage.getItem('s2o_user');
@@ -44,119 +39,41 @@ export default function MenuManagement() {
       const user = JSON.parse(userStr);
       setCurrentUser(user);
       fetchMenu(user.tenantId);
-    } else {
-      alert("Vui lòng đăng nhập trước!");
-      window.location.href = "/";
-    }
+    } else { window.location.href = "/"; }
   }, []);
 
-  useEffect(() => {
-    if (tableNameParam) setTableName(tableNameParam);
-  }, [tableNameParam]);
+  useEffect(() => { if (tableNameParam) setTableName(tableNameParam); }, [tableNameParam]);
 
   const fetchMenu = async (tenantId) => {
-    setIsLoading(true);
     if (!tenantId) return;
     const data = await fetchAPI(SERVICES.MENU, `/api/menu?tenantId=${tenantId}`);
     if (data) setMenuItems(data.sort((a, b) => b.id - a.id));
-    setIsLoading(false);
   };
 
-  // --- 1. MỞ MODAL ĐỂ THÊM MÓN MỚI ---
-  const openOrderModal = (item) => { 
-      if (item.status === 'OutOfStock' || item.status === 'ComingSoon') {
-          alert("Món này hiện không thể đặt!");
-          return;
+  // --- HELPER: LẤY MÀU THEO STATUS ---
+  const getStatusColor = (status) => {
+      switch(status) {
+          case 'Available': return '#10B981'; // Xanh lá
+          case 'BestSeller': return '#F59E0B'; // Cam
+          case 'Promo': return '#8B5CF6'; // Tím
+          case 'ComingSoon': return '#EAB308'; // Vàng
+          case 'OutOfStock': return '#EF4444'; // Đỏ
+          default: return '#6B7280';
       }
-      setSelectedDish(item); 
-      setOrderNote(''); 
-      setOrderQty(1); 
-      setEditingCartId(null); // Reset mode sửa -> mode thêm mới
-      setShowOrderModal(true); 
   };
 
-  // --- 2. MỞ MODAL ĐỂ SỬA MÓN TRONG GIỎ ---
-  const openEditCartItem = (cartItem) => {
-      setSelectedDish(cartItem); // Lấy thông tin món từ giỏ hàng
-      setOrderNote(cartItem.note || '');
-      setOrderQty(cartItem.quantity);
-      setEditingCartId(cartItem.cartId); // Đánh dấu đang sửa cartId này
-      setShowOrderModal(true);
-  };
+  // --- UPLOAD & SAVE ---
+  const handleFileChange = (e) => { if (e.target.files[0]) setImageFile(e.target.files[0]); };
   
-  // --- 3. XỬ LÝ LƯU (THÊM HOẶC CẬP NHẬT) ---
-  const confirmAddToCart = () => {
-    if (!selectedDish) return;
-
-    if (editingCartId) {
-        // A. Mode Cập nhật: Tìm item trong cart và sửa lại
-        setCart(prev => prev.map(item => 
-            item.cartId === editingCartId 
-            ? { ...item, quantity: orderQty, note: orderNote.trim() } 
-            : item
-        ));
-    } else {
-        // B. Mode Thêm mới
-        setCart(prev => [...prev, { 
-            ...selectedDish, 
-            cartId: Date.now(), 
-            quantity: orderQty, 
-            note: orderNote.trim() 
-        }]);
-    }
-    
-    // Reset và đóng modal
-    setShowOrderModal(false); 
-    setSelectedDish(null);
-    setEditingCartId(null);
-  };
-
-  const removeFromCart = (cartId) => {
-      // Nếu đang sửa món này mà bấm xóa thì đóng modal luôn
-      if (editingCartId === cartId) {
-          setShowOrderModal(false);
-          setEditingCartId(null);
-      }
-      setCart(prev => prev.filter(item => item.cartId !== cartId));
-  };
-
-  const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-  const handleCreateOrder = async () => {
-    if (cart.length === 0) return alert("Giỏ hàng đang trống!");
-    if (!tableName) return alert("Vui lòng nhập tên bàn/khách hàng!");
-    
-    const payload = {
-      tableName: tableName, totalAmount: calculateTotal(), status: "Pending", tenantId: currentUser?.tenantId,
-      items: cart.map(i => ({ menuItemName: i.name, price: i.price, quantity: i.quantity, note: i.note || "" }))
-    };
-
-    const res = await fetchAPI(SERVICES.ORDER, '/api/orders', { method: 'POST', body: JSON.stringify(payload) });
-    if (res && res.id) {
-        if (tableId) {
-            await fetchAPI(SERVICES.MENU, `/api/tables/${tableId}/status`, { method: 'PUT', body: JSON.stringify({ status: 'Occupied', currentOrderId: res.id }) });
-        }
-        alert("✅ Đã tạo đơn hàng thành công!");
-        setCart([]); setTableName('Khách lẻ');
-        if (tableId) router.push('/tables');
-    } else {
-        alert("❌ Lỗi khi tạo đơn hàng.");
-    }
-  };
-
-  const handleFileChange = (e) => {
-    if (e.target.files[0]) setImageFile(e.target.files[0]);
-  };
-
   const uploadImageToFirebase = async () => {
     if (!imageFile) return newItem.imageUrl;
     try {
-      const storageRef = ref(storage, `menu-images/${currentUser.tenantId}/${Date.now()}_${imageFile.name}`);
+      const filePath = `menu-images/${currentUser.tenantId}/${Date.now()}_${imageFile.name}`;
+      const storageRef = ref(storage, filePath);
       const snapshot = await uploadBytes(storageRef, imageFile);
       return await getDownloadURL(snapshot.ref);
     } catch (error) {
-      console.error("Lỗi upload ảnh:", error);
-      alert("Upload ảnh thất bại!");
+      alert("Lỗi upload ảnh! Vui lòng thử lại.");
       return null;
     }
   };
@@ -165,22 +82,16 @@ export default function MenuManagement() {
     if (!newItem.name || !newItem.price) return alert("Vui lòng nhập tên và giá!");
     
     setIsUploading(true);
-    
     const uploadedUrl = await uploadImageToFirebase();
-    if (!uploadedUrl && imageFile) {
-        setIsUploading(false);
-        return; 
-    }
-
-    const isAvailable = (newItem.status !== 'OutOfStock' && newItem.status !== 'ComingSoon');
+    if (imageFile && !uploadedUrl) { setIsUploading(false); return; }
 
     const payload = { 
         ...newItem, 
         price: Number(newItem.price), 
         categoryId: Number(newItem.categoryId), 
-        isAvailable: isAvailable, 
         tenantId: currentUser.tenantId, 
-        imageUrl: uploadedUrl || 'https://via.placeholder.com/150' 
+        imageUrl: uploadedUrl || 'https://via.placeholder.com/150',
+        status: newItem.status
     };
 
     let success;
@@ -190,217 +101,286 @@ export default function MenuManagement() {
         success = await fetchAPI(SERVICES.MENU, '/api/menu', { method: 'POST', body: JSON.stringify(payload) });
     }
 
-    if (success) { 
-        fetchMenu(currentUser.tenantId); 
-        handleCancel(); 
-    } else {
-        alert("Lỗi khi lưu món ăn");
-    }
+    if (success) { fetchMenu(currentUser.tenantId); handleCancel(); } 
+    else { alert("Có lỗi xảy ra khi lưu!"); }
     setIsUploading(false);
   };
 
-  const handleDelete = async (id) => { 
-      if (confirm("Xoá món này?")) { 
+  const handleEditClick = (e, item) => { 
+      e.stopPropagation();
+      setNewItem({ ...item, imageUrl: item.imageUrl || '', description: item.description || '', status: item.status || 'Available' }); 
+      setEditingId(item.id); setImageFile(null); setShowForm(true); 
+  };
+  
+  const handleCancel = () => { 
+      setNewItem({ name: '', price: '', categoryId: 1, imageUrl: '', description: '', status: 'Available' }); 
+      setEditingId(null); setImageFile(null); setShowForm(false); 
+  };
+
+  const handleDelete = async (e, id) => { 
+      e.stopPropagation();
+      if (confirm("Xoá món này khỏi menu?")) { 
           await fetchAPI(SERVICES.MENU, `/api/menu/${id}?tenantId=${currentUser.tenantId}`, { method: 'DELETE' }); 
           fetchMenu(currentUser.tenantId); 
       } 
   };
 
-  const handleChange = (e) => setNewItem({ ...newItem, [e.target.name]: e.target.value });
-  const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
-  
-  const handleEditClick = (item) => { 
-      setNewItem({ 
-          ...item, 
-          imageUrl: item.imageUrl || '', 
-          description: item.description || '',
-          status: item.status || 'Available' 
-      }); 
-      setEditingId(item.id); 
-      setImageFile(null); 
-      setShowForm(true); 
+  // --- LOGIC ORDER (THÊM & SỬA) ---
+  const openOrderPopup = (item) => {
+      if (['OutOfStock', 'ComingSoon'].includes(item.status)) return alert("Món này tạm hết!");
+      setSelectedDish(item);
+      setOrderQty(1);
+      setOrderNote('');
+      setIsEditingCart(false);
+      setEditingCartId(null);
+      setShowOrderModal(true);
   };
-  
-  const handleCancel = () => { 
-      setNewItem({ name: '', price: '', categoryId: 1, imageUrl: '', description: '', status: 'Available' }); 
-      setEditingId(null); 
-      setImageFile(null);
-      setShowForm(false); 
-  };
-  
-  const filteredItems = menuItems.filter(item => {
-    if (filters.keyword && !item.name.toLowerCase().includes(filters.keyword.toLowerCase())) return false;
-    if (filters.categoryId !== 'all' && item.categoryId !== Number(filters.categoryId)) return false;
-    return true;
-  });
 
-  const getStatusBadge = (status) => {
-    switch(status) {
-        case 'OutOfStock': return <span style={{background:'#e74c3c', color:'white', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>Hết hàng</span>;
-        case 'ComingSoon': return <span style={{background:'#f39c12', color:'white', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>Sắp có</span>;
-        case 'BestSeller': return <span style={{background:'#f1c40f', color:'black', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>🔥 Best Seller</span>;
-        case 'Promo': return <span style={{background:'#9b59b6', color:'white', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>🏷️ Khuyến mãi</span>;
-        default: return null;
+  const openEditCartPopup = (cartItem) => {
+      setSelectedDish({ name: cartItem.name, price: cartItem.price, imageUrl: cartItem.imageUrl });
+      setOrderQty(cartItem.quantity);
+      setOrderNote(cartItem.note || '');
+      setIsEditingCart(true);
+      setEditingCartId(cartItem.cartId);
+      setShowOrderModal(true);
+  };
+
+  const handleConfirmOrder = () => {
+      if (!selectedDish) return;
+
+      if (isEditingCart) {
+          setCart(cart.map(item => {
+              if (item.cartId === editingCartId) {
+                  return { ...item, quantity: orderQty, note: orderNote.trim() };
+              }
+              return item;
+          }));
+      } else {
+          const existingItemIndex = cart.findIndex(i => i.id === selectedDish.id && i.note === orderNote.trim());
+          if (existingItemIndex > -1) {
+              const newCart = [...cart];
+              newCart[existingItemIndex].quantity += orderQty;
+              setCart(newCart);
+          } else {
+              const itemToAdd = { ...selectedDish, quantity: orderQty, cartId: Date.now(), note: orderNote.trim() };
+              setCart([...cart, itemToAdd]);
+          }
+      }
+      setShowOrderModal(false); setSelectedDish(null);
+  };
+
+  const removeFromCart = (cartId) => setCart(prev => prev.filter(item => item.cartId !== cartId));
+  const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  const handleCreateOrder = async () => {
+    if (cart.length === 0) return alert("Giỏ hàng trống!");
+    const payload = {
+      tableName: tableName, totalAmount: calculateTotal(), status: "Pending", tenantId: currentUser?.tenantId,
+      items: cart.map(i => ({ menuItemName: i.name, price: i.price, quantity: i.quantity, note: i.note || "" }))
+    };
+    const res = await fetchAPI(SERVICES.ORDER, '/api/orders', { method: 'POST', body: JSON.stringify(payload) });
+    if (res && res.id) {
+        if (tableId) await fetchAPI(SERVICES.MENU, `/api/tables/${tableId}/status`, { method: 'PUT', body: JSON.stringify({ status: 'Occupied', currentOrderId: res.id }) });
+        alert("✅ Đã gửi đơn xuống bếp!");
+        setCart([]); setTableName('Khách lẻ');
+        if (tableId) router.push('/tables');
     }
   };
 
+  // --- RENDER BADGE ---
+  const renderStatusBadge = (status) => {
+      switch(status) {
+          case 'BestSeller': return <span className={`${styles.badge} ${styles.badgeBestSeller}`}>🔥 Best Seller</span>;
+          case 'Promo': return <span className={`${styles.badge} ${styles.badgePromo}`}>🏷️ Promo</span>;
+          case 'ComingSoon': return <span className={`${styles.badge} ${styles.badgeComingSoon}`}>🟡 Sắp có</span>;
+          case 'OutOfStock': return <span className={`${styles.badge} ${styles.badgeOutOfStock}`}>🔴 Hết hàng</span>;
+          default: return null;
+      }
+  };
+
+  const filteredItems = menuItems.filter(item => {
+    if (filters.keyword && !item.name.toLowerCase().includes(filters.keyword.toLowerCase())) return false;
+    if (filters.categoryId !== 'all' && item.categoryId !== Number(filters.categoryId)) return false;
+    if (filters.status !== 'all' && item.status !== filters.status) return false;
+    return true;
+  });
+
   return (
     <div className={styles.container}>
-      
-      {/* DANH SÁCH MENU */}
+      {/* CỘT TRÁI */}
       <div className={styles.mainContent}>
         <div className={styles.header}>
-          <div>
-            {tableId ? <Link href="/tables" className={styles.backLink}>← Quay lại Sơ đồ bàn</Link> : <Link href="/" className={styles.backLink}>← Quay lại Dashboard</Link>}
-            <h2 className={styles.title}>🍲 Menu: {currentUser?.tenantName}</h2>
-          </div>
-          <button onClick={() => setShowForm(!showForm)} className={`${styles.btn} ${showForm ? styles.btnClose : styles.btnAdd}`}>
-            {showForm ? 'Đóng Form' : '+ Thêm món mới'}
-          </button>
+            <div style={{display:'flex', alignItems:'center'}}>
+                <Link href={tableId ? "/tables" : "/"} className={styles.backLink} title="Back">←</Link>
+                <h2 className={styles.title}>Thực Đơn</h2>
+            </div>
+            <button onClick={() => setShowForm(true)} className={styles.btnAdd}><span>+ Thêm Món Mới</span></button>
         </div>
 
-        {/* --- FORM NHẬP LIỆU --- */}
-        {showForm && (
-          <div className={styles.formContainer}>
-             <h4 style={{marginTop:0}}>{editingId ? 'Sửa món' : 'Thêm món'}</h4>
-             <div className={styles.formGrid}>
-               <input name="name" value={newItem.name} onChange={handleChange} placeholder="Tên món" className={styles.input} />
-               <input name="price" type="number" value={newItem.price} onChange={handleChange} placeholder="Giá" className={styles.input} />
-               <select name="categoryId" value={newItem.categoryId} onChange={handleChange} className={styles.input}>
-                 <option value="1">Món nước</option><option value="2">Món khô</option><option value="3">Đồ uống</option><option value="4">Tráng miệng</option><option value="5">Khác</option>
-               </select>
-
-               <select name="status" value={newItem.status} onChange={handleChange} className={styles.input} style={{fontWeight:'bold'}}>
-                   <option value="Available">🟢 Đang bán</option>
-                   <option value="BestSeller">🔥 Best Seller</option>
-                   <option value="Promo">🏷️ Đang khuyến mãi</option>
-                   <option value="ComingSoon">🟡 Sắp có mặt</option>
-                   <option value="OutOfStock">🔴 Hết hàng</option>
-               </select>
-               
-               <div className={styles.fullWidth} style={{display:'flex', gap: 10, alignItems:'center'}}>
-                   <input type="file" onChange={handleFileChange} accept="image/*" className={styles.input} />
-                   {newItem.imageUrl && !imageFile && (
-                       <img src={newItem.imageUrl} alt="Preview" style={{width: 40, height: 40, objectFit:'cover', borderRadius: 4}} />
-                   )}
-               </div>
-
-               <input name="description" value={newItem.description} onChange={handleChange} placeholder="Mô tả chi tiết" className={`${styles.input} ${styles.fullWidth}`} />
-             </div>
-             <div style={{marginTop: 10, textAlign:'right'}}>
-               <button onClick={handleSave} className={`${styles.btn} ${styles.btnSave}`} disabled={isUploading}>
-                   {isUploading ? 'Đang tải ảnh...' : 'Lưu Menu'}
-               </button>
-             </div>
-          </div>
-        )}
-
+        {/* --- FILTER BAR (Đã thêm mục Khác) --- */}
         <div className={styles.filterContainer}>
-          <input name="keyword" value={filters.keyword} onChange={handleFilterChange} placeholder="🔍 Tìm món..." className={styles.input} style={{flex: 2}} />
-          <select name="categoryId" value={filters.categoryId} onChange={handleFilterChange} className={styles.input} style={{flex: 1}}>
-            <option value="all">Tất cả</option><option value="1">Món nước</option><option value="2">Món khô</option><option value="3">Đồ uống</option><option value="4">Tráng miệng</option><option value="5">Khác</option>
+          <input className={styles.inputSearch} placeholder="🔍 Tìm kiếm..." value={filters.keyword} onChange={(e) => setFilters({...filters, keyword: e.target.value})} />
+          
+          <select className={styles.selectFilter} value={filters.categoryId} onChange={(e) => setFilters({...filters, categoryId: e.target.value})}>
+            <option value="all">Tất cả danh mục</option>
+            <option value="1">Món nước</option>
+            <option value="2">Món khô</option>
+            <option value="3">Đồ uống</option>
+            <option value="4">Tráng miệng</option>
+            <option value="5">Khác</option> {/* <-- Đã bổ sung */}
+          </select>
+
+          <select className={styles.selectFilter} value={filters.status} onChange={(e) => setFilters({...filters, status: e.target.value})}>
+            <option value="all">Tất cả trạng thái</option>
+            <option value="Available">🟢 Đang bán</option>
+            <option value="BestSeller">🔥 Best Seller</option>
+            <option value="Promo">🏷️ Khuyến mãi</option>
+            <option value="ComingSoon">🟡 Sắp có</option>
+            <option value="OutOfStock">🔴 Hết hàng</option>
           </select>
         </div>
 
         <div className={styles.menuGrid}>
           {filteredItems.map(item => (
-            <div key={item.id} className={styles.itemCard}>
-              <div style={{position:'relative'}}>
-                  <img src={item.imageUrl || 'https://via.placeholder.com/150'} className={styles.itemImage} alt={item.name} />
-                  <div style={{position:'absolute', top:5, right:5, zIndex: 10}}>
-                      {getStatusBadge(item.status)}
-                  </div>
+            <div key={item.id} className={`${styles.itemCard} ${ (item.status === 'OutOfStock' || item.status === 'ComingSoon') ? styles.disabledItem : ''}`}>
+               <div className={styles.itemImage}>
+                   <img src={item.imageUrl || 'https://via.placeholder.com/150'} style={{width:'100%', height:'100%', objectFit:'cover'}} alt={item.name} onError={(e)=>{e.target.onerror=null; e.target.src="https://via.placeholder.com/150"}} />
+                   <div className={styles.badgeContainer}>{renderStatusBadge(item.status)}</div>
+               </div>
+               <div className={styles.actionLinks}>
+                 <span onClick={(e) => handleEditClick(e, item)} className={styles.linkEdit}>Sửa</span>
+                 <span onClick={(e) => handleDelete(e, item.id)} className={styles.linkDelete}>Xoá</span>
               </div>
-              
-              <div className={styles.itemInfo}>
-                <div style={{fontWeight:'bold'}}>{item.name}</div>
-                <div className={styles.itemDesc}>{item.description}</div>
-                <div className={styles.itemPrice}>{item.price.toLocaleString()} đ</div>
-                <div className={styles.actions}>
-                   <button 
-                       onClick={() => openOrderModal(item)} 
-                       className={`${styles.btn} ${styles.btnSelect}`}
-                       disabled={item.status === 'OutOfStock' || item.status === 'ComingSoon'}
-                       style={{opacity: (item.status === 'OutOfStock' || item.status === 'ComingSoon') ? 0.5 : 1}}
-                   >
-                       {item.status === 'OutOfStock' ? 'Hết hàng' : '+ Chọn'}
-                   </button>
-                </div>
-                <div className={styles.footerActions}>
-                   <span onClick={() => handleEditClick(item)} className={styles.linkEdit}>Sửa</span>
-                   <span onClick={() => handleDelete(item.id)} className={styles.linkDelete}>Xoá</span>
+               <div className={styles.itemInfo}>
+                <div className={styles.itemName}>{item.name}</div>
+                <div className={styles.itemDesc}>{item.description || 'Chưa có mô tả'}</div>
+                <div className={styles.itemFooter}>
+                    <span className={styles.itemPrice}>{item.price.toLocaleString()} đ</span>
+                    <button onClick={() => openOrderPopup(item)} className={styles.btnSelect} disabled={item.status === 'OutOfStock' || item.status === 'ComingSoon'}>+ Chọn</button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       </div>
-      
-      {/* SIDEBAR GIỎ HÀNG */}
-      <div className={styles.sidebar}>
-           <div className={styles.sidebarHeader}>
-            <h3 style={{ margin: 0 }}>🛒 Đơn Hàng Mới</h3>
-            <div style={{ marginTop: 10 }}>
-              <label style={{fontSize: 12, display: 'block', marginBottom: 5}}>Khách hàng / Bàn:</label>
-              <input value={tableName} onChange={(e) => setTableName(e.target.value)} className={styles.tableInput} placeholder="Nhập tên bàn..." />
-            </div>
-          </div>
-          <div className={styles.cartList}>
-             {cart.map(item => (
-                <div key={item.cartId} className={styles.cartItem}>
-                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'start'}}>
-                       <div 
-                            style={{fontWeight:'bold', cursor:'pointer', color: '#2c3e50'}} 
-                            onClick={() => openEditCartItem(item)} // --- 4. CLICK ĐỂ SỬA ---
-                            title="Bấm để sửa món này"
-                       >
-                           {item.name} <span style={{fontSize:10, color:'#3498db'}}>✏️</span>
-                       </div>
-                       <button onClick={() => removeFromCart(item.cartId)} className={styles.removeBtn}>X</button>
-                   </div>
-                   
-                   {/* Hiển thị Note */}
-                   {item.note && (
-                       <div style={{fontSize: '11px', color: '#e67e22', fontStyle:'italic', marginTop: 2, marginBottom: 2}}>
-                           Note: {item.note}
-                       </div>
-                   )}
 
-                   <div style={{fontSize: 13, color: '#555'}}>
-                       {item.price.toLocaleString()} x {item.quantity} = {(item.price * item.quantity).toLocaleString()}
+      {/* CỘT PHẢI: GIỎ HÀNG */}
+      <div className={styles.sidebar}>
+         <div className={styles.sidebarHeader}>
+            <h3 style={{margin:0, fontSize:18}}>Đơn Hàng</h3>
+            <div style={{marginTop:15}}>
+                <label style={{fontSize:13, fontWeight:600, color:'#6B7280'}}>Khách Hàng / Bàn:</label>
+                <input value={tableName} onChange={(e) => setTableName(e.target.value)} style={{width:'100%', padding:10, marginTop:5, border:'1px solid #ddd', borderRadius:8, fontWeight:'bold', boxSizing:'border-box'}} />
+            </div>
+         </div>
+         <div className={styles.cartList}>
+             {cart.length === 0 ? <p style={{textAlign:'center', color:'#999', marginTop:50}}>Chưa có món nào</p> : 
+               cart.map(item => (
+                <div key={item.cartId} className={styles.cartItem}>
+                   <div className={styles.cartItemHeader}>
+                       <span className={styles.cartItemName}>{item.name}</span>
+                       <div className={styles.cartActions}>
+                           <button onClick={() => openEditCartPopup(item)} className={styles.btnEditCart} title="Sửa món này">✎</button>
+                           <button onClick={() => removeFromCart(item.cartId)} className={styles.removeBtn} title="Xoá món này">✕</button>
+                       </div>
+                   </div>
+                   {item.note && <div className={styles.cartItemNote}>{item.note}</div>}
+                   <div style={{display:'flex', justifyContent:'space-between', marginTop:5, fontSize:13}}>
+                       <span>{item.price.toLocaleString()} x <b>{item.quantity}</b></span>
+                       <span style={{fontWeight:'bold'}}>{(item.price * item.quantity).toLocaleString()}</span>
                    </div>
                 </div>
              ))}
-          </div>
-          <div className={styles.sidebarFooter}>
-            <div style={{fontWeight:'bold', marginBottom:10}}>Tổng: {calculateTotal().toLocaleString()} đ</div>
-            <button onClick={handleCreateOrder} className={`${styles.btn} ${styles.btnOrder}`}>Gửi Bếp</button>
-          </div>
+         </div>
+         <div className={styles.sidebarFooter}>
+            <div style={{display:'flex', justifyContent:'space-between', marginBottom:15, fontWeight:'bold', fontSize:18}}>
+                <span>Tổng tiền:</span>
+                <span style={{color:'#4F46E5'}}>{calculateTotal().toLocaleString()} đ</span>
+            </div>
+            <button onClick={handleCreateOrder} className={styles.btnOrder}>Gửi Bếp & Thanh Toán</button>
+         </div>
       </div>
-      
-      {/* MODAL ORDER / EDIT */}
+
+      {/* MODAL FORM THÊM/SỬA MÓN (Quản lý) */}
+      {showForm && (
+        <div className={styles.modalOverlay} onClick={handleCancel}>
+            <div className={styles.formModal} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.modalHeader}>
+                    <h3 className={styles.modalTitle}>{editingId ? 'Chỉnh Sửa Món' : 'Thêm Món Mới'}</h3>
+                    <button onClick={handleCancel} className={styles.btnCloseModal}>&times;</button>
+                </div>
+                <div className={styles.formGroup}>
+                     <label className={styles.label}>Tên món</label>
+                     <input value={newItem.name} onChange={(e)=>setNewItem({...newItem, name: e.target.value})} className={styles.input}/>
+                </div>
+                <div style={{display:'flex', gap:15}}>
+                    <div className={styles.formGroup} style={{flex:1}}>
+                        <label className={styles.label}>Giá</label>
+                        <input type="number" value={newItem.price} onChange={(e)=>setNewItem({...newItem, price: e.target.value})} className={styles.input}/>
+                    </div>
+                    <div className={styles.formGroup} style={{flex:1}}>
+                        <label className={styles.label}>Danh mục</label>
+                        <select value={newItem.categoryId} onChange={(e)=>setNewItem({...newItem, categoryId: e.target.value})} className={styles.input}>
+                            <option value="1">Món nước</option>
+                            <option value="2">Món khô</option>
+                            <option value="3">Đồ uống</option>
+                            <option value="4">Tráng miệng</option>
+                            <option value="5">Khác</option> {/* <-- Đã bổ sung */}
+                        </select>
+                    </div>
+                </div>
+                <div className={styles.formGroup}>
+                    <label className={styles.label}>Trạng thái</label>
+                    <select name="status" value={newItem.status} onChange={(e) => setNewItem({...newItem, status: e.target.value})} 
+                        className={styles.statusSelect} style={{borderColor: getStatusColor(newItem.status), color: getStatusColor(newItem.status)}}>
+                        <option value="Available" style={{color:'#10B981'}}>🟢 Đang bán</option>
+                        <option value="BestSeller" style={{color:'#F59E0B'}}>🔥 Best Seller</option>
+                        <option value="Promo" style={{color:'#8B5CF6'}}>🏷️ Đang khuyến mãi</option>
+                        <option value="ComingSoon" style={{color:'#EAB308'}}>🟡 Sắp có mặt</option>
+                        <option value="OutOfStock" style={{color:'#EF4444'}}>🔴 Hết hàng</option>
+                    </select>
+                </div>
+                <div className={styles.formGroup}>
+                    <label className={styles.label}>Hình ảnh</label>
+                    <div className={styles.uploadBox} onClick={() => document.getElementById('fileUpload').click()}>
+                        <input id="fileUpload" type="file" onChange={handleFileChange} accept="image/*" hidden />
+                        {imageFile ? (<div style={{color:'#10B981', fontWeight:600}}>✓ {imageFile.name}</div>) : newItem.imageUrl ? (<img src={newItem.imageUrl} className={styles.uploadPreview} />) : (<span>📷 Tải ảnh lên</span>)}
+                    </div>
+                </div>
+                <div className={styles.formGroup}><label className={styles.label}>Mô tả</label><textarea className={styles.input} value={newItem.description} onChange={(e)=>setNewItem({...newItem, description:e.target.value})}/></div>
+                <button onClick={handleSave} className={styles.btnSave}>Lưu Thay Đổi</button>
+            </div>
+        </div>
+      )}
+
+      {/* MODAL ORDER/EDIT CART */}
       {showOrderModal && selectedDish && (
           <div className={styles.modalOverlay}>
-            <div className={styles.modalContent}>
-               <h3>{selectedDish.name}</h3>
-               <textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} rows="3" className={styles.input} style={{marginBottom: 10}} placeholder="Ghi chú (ít cay, không hành...)" />
-               
-               <div className={styles.qtyContainer}>
-                  <label>Số lượng:</label>
-                  <button onClick={() => setOrderQty(q => Math.max(1, q - 1))} className={styles.qtyBtn}>-</button>
-                  <span style={{fontWeight:'bold'}}>{orderQty}</span>
-                  <button onClick={() => setOrderQty(q => q + 1)} className={styles.qtyBtn}>+</button>
-               </div>
-
-               <div style={{marginTop:10, display:'flex', justifyContent:'flex-end', gap:10}}>
-                 <button onClick={()=>setShowOrderModal(false)} className={`${styles.btn} ${styles.btnClose}`}>Huỷ</button>
-                 
-                 {/* --- 5. NÚT THAY ĐỔI TÙY THEO MODE --- */}
-                 <button onClick={confirmAddToCart} className={`${styles.btn} ${styles.btnAdd}`}>
-                     {editingCartId ? 'Lưu thay đổi' : 'Thêm vào đơn'}
-                 </button>
-               </div>
-            </div>
+              <div className={styles.formModal} style={{width: 400}}>
+                  <div className={styles.modalHeader}>
+                      <h3 className={styles.modalTitle}>{isEditingCart ? 'Sửa món' : 'Thêm vào giỏ'}</h3>
+                      <button onClick={() => setShowOrderModal(false)} className={styles.btnCloseModal}>&times;</button>
+                  </div>
+                  <div style={{textAlign:'center', marginBottom:20}}>
+                      <div style={{fontSize:18, fontWeight:'bold', color:'#111827'}}>{selectedDish.name}</div>
+                      <div style={{color:'#4F46E5', fontWeight:'bold'}}>{selectedDish.price.toLocaleString()} đ</div>
+                  </div>
+                  <div className={styles.formGroup}>
+                      <label className={styles.label}>Số lượng</label>
+                      <div className={styles.qtyContainer}>
+                          <button onClick={() => setOrderQty(q => Math.max(1, q - 1))} className={styles.qtyBtn}>-</button>
+                          <span style={{fontSize:20, fontWeight:700}}>{orderQty}</span>
+                          <button onClick={() => setOrderQty(q => q + 1)} className={styles.qtyBtn}>+</button>
+                      </div>
+                  </div>
+                  <div className={styles.formGroup}>
+                      <label className={styles.label}>Ghi chú</label>
+                      <input className={styles.input} placeholder="Ví dụ: Không hành..." value={orderNote} onChange={(e) => setOrderNote(e.target.value)} autoFocus/>
+                  </div>
+                  <button onClick={handleConfirmOrder} className={isEditingCart ? styles.btnUpdateCart : styles.btnAddCart}>
+                      {isEditingCart ? 'Cập nhật thay đổi' : 'Thêm vào đơn'}
+                  </button>
+              </div>
           </div>
       )}
     </div>
