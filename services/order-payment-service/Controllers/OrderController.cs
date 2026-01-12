@@ -46,7 +46,7 @@ namespace OrderPaymentService.Controllers
                 .ToListAsync();
         }
 
-        // 2. POST: Tạo đơn hàng (Dùng DTO để nhận Token chuẩn xác)
+        // 2. POST: Tạo đơn hàng (Dùng DTO để nhận Token chuẩn xác + Fix giờ VN)
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto request)
         {
@@ -63,9 +63,11 @@ namespace OrderPaymentService.Controllers
                 TableName = request.TableName,
                 TotalAmount = request.TotalAmount,
                 Status = "Pending",
-                CreatedAt = DateTime.UtcNow,
                 
-                // 🔥 QUAN TRỌNG: Gán Token từ request vào Order để lưu DB
+                // 🔥 SỬA LỖI GIỜ: Cộng thêm 7 tiếng để ra giờ Việt Nam
+                CreatedAt = DateTime.UtcNow.AddHours(7), 
+                
+                // Gán Token từ request vào Order để lưu DB
                 DeviceToken = request.DeviceToken, 
 
                 Items = new List<OrderItem>()
@@ -116,12 +118,14 @@ namespace OrderPaymentService.Controllers
                     TenantId = newOrder.TenantId,
                     TableId = newOrder.TableId,
                     TotalAmount = newOrder.TotalAmount,
-                    CreatedAt = newOrder.CreatedAt,
+                    // Giờ này đã là giờ VN do đã gán ở trên
+                    CreatedAt = newOrder.CreatedAt, 
                     Status = newOrder.Status
                 });
             }
             catch (Exception ex)
             {
+                // Chỉ ghi log warning màu vàng, vẫn cho khách đặt món thành công
                 _logger.LogWarning("⚠️ Lỗi gửi RabbitMQ (vẫn cho qua): " + ex.Message);
             }
 
