@@ -65,7 +65,7 @@ namespace OrderPaymentService.Controllers
                 Status = "Pending",
                 
                 // 🔥 SỬA LỖI GIỜ: Cộng thêm 7 tiếng để ra giờ Việt Nam
-                CreatedAt = DateTime.UtcNow.AddHours(7), 
+                CreatedAt = DateTime.UtcNow, 
                 
                 // Gán Token từ request vào Order để lưu DB
                 DeviceToken = request.DeviceToken, 
