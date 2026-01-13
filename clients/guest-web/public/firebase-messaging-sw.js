@@ -4,12 +4,21 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compa
 
 // Config này phải GIỐNG HỆT trong file utils/firebaseConfig.js
 const firebaseConfig = {
-  apiKey: "AIzaSyD4IJw1x92RbBchKezFkEuHzsUynJ2nsA8", 
-  authDomain: "s2o-restaurant.firebaseapp.com",
-  projectId: "s2o-restaurant",
-  storageBucket: "s2o-restaurant.firebasestorage.app",
-  messagingSenderId: "669538036774",
-  appId: "1:669538036774:web:0a089b6a5d30b089ab4ae7",
+
+  apiKey: "AIzaSyD6Vfk-5ndY7hpuyzsm0B-XeAJo_XGgCEo",
+
+  authDomain: "s20-smart-restaurant.firebaseapp.com",
+
+  projectId: "s20-smart-restaurant",
+
+  storageBucket: "s20-smart-restaurant.firebasestorage.app",
+
+  messagingSenderId: "55637303148",
+
+  appId: "1:55637303148:web:3f8a21db1605aa94b95d49",
+
+  measurementId: "G-K7VH5982FP"
+
 };
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();

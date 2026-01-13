@@ -1,6 +1,7 @@
-using System.Text.Json.Serialization;
-using System.ComponentModel.DataAnnotations.Schema;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace OrderPaymentService.Models
 {
@@ -16,6 +17,8 @@ namespace OrderPaymentService.Models
         public string Status { get; set; } = "Pending";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public int TenantId { get; set; }
+
+        // 🔥 QUAN TRỌNG: Cột này để lưu Token thông báo
         public string? DeviceToken { get; set; } 
 
         public List<OrderItem> Items { get; set; } = new();
@@ -32,7 +35,6 @@ namespace OrderPaymentService.Models
         public int Quantity { get; set; }
         public string Note { get; set; } = string.Empty;
 
-        // --- MỚI: Lưu trạng thái món lúc đặt (VD: BestSeller, Promo) ---
         public string? ItemStatus { get; set; } 
 
         public int OrderId { get; set; }

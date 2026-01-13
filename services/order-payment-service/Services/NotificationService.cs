@@ -1,76 +1,112 @@
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Google.Apis.Auth.OAuth2;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace OrderPaymentService.Services
 {
     public class NotificationService
     {
-        public NotificationService()
+        // Không khởi tạo trong Constructor nữa để tránh lỗi ngầm
+        public NotificationService() { }
+
+        // Hàm riêng để lấy hoặc khởi tạo Firebase App an toàn
+        private FirebaseMessaging GetFirebaseMessaging()
         {
-            // Kiểm tra xem Firebase đã khởi tạo chưa để tránh lỗi
-            if (FirebaseApp.DefaultInstance == null)
+            // 1. Nếu đã có instance rồi thì dùng luôn
+            if (FirebaseApp.DefaultInstance != null)
             {
-                try 
-                {
-                    // Đọc file key từ thư mục gốc của ứng dụng
-                    using var stream = File.OpenRead("firebase-key.json");
-                    
-                    FirebaseApp.Create(new AppOptions()
-                    {
-                        Credential = GoogleCredential.FromStream(stream)
-                    });
-                    
-                    Console.WriteLine("--> Firebase Admin SDK Initialized Successfully.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"⚠️ Error init Firebase: {ex.Message}");
-                    Console.WriteLine("--> Hãy chắc chắn bạn đã copy file 'firebase-key.json' vào thư mục gốc của Service.");
-                }
+                return FirebaseMessaging.DefaultInstance;
             }
+
+            // 2. Nếu chưa có, bắt đầu khởi tạo
+            string credentialPath = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+            
+            // Fallback nếu biến môi trường bị rỗng
+            if (string.IsNullOrEmpty(credentialPath))
+            {
+                credentialPath = "/app/firebase-admin.json"; 
+            }
+
+            Console.WriteLine($"[FCM] 🔍 Đang tìm file key tại: {credentialPath}");
+
+            if (!File.Exists(credentialPath))
+            {
+                // Kiểm tra xem có file nào trong thư mục /app không (để debug)
+                Console.WriteLine($"[FCM] ❌ KHÔNG TÌM THẤY FILE KEY! Danh sách file trong /app:");
+                if (Directory.Exists("/app"))
+                {
+                    foreach (var f in Directory.GetFiles("/app"))
+                        Console.WriteLine($" - {f}");
+                }
+                throw new FileNotFoundException($"Không tìm thấy file JSON tại {credentialPath}");
+            }
+
+            try 
+            {
+                FirebaseApp.Create(new AppOptions()
+                {
+                    Credential = GoogleCredential.FromFile(credentialPath)
+                });
+                Console.WriteLine("[FCM] ✅ Khởi tạo Firebase thành công!");
+                return FirebaseMessaging.DefaultInstance;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[FCM] ❌ Lỗi khởi tạo Firebase: {ex.Message}");
+                throw; // Ném lỗi ra để hàm gửi biết
+            }
+        }
+
+        public async Task SendNotificationAsync(string deviceToken, string title, string body)
+        {
+             if (string.IsNullOrEmpty(deviceToken)) 
+             {
+                 Console.WriteLine("[FCM] ⚠️ DeviceToken trống. Bỏ qua.");
+                 return;
+             }
+
+             try
+             {
+                 // Gọi hàm lấy Instance (sẽ tự khởi tạo nếu chưa có)
+                 var messaging = GetFirebaseMessaging();
+
+                 var message = new Message()
+                 {
+                     Token = deviceToken,
+                     Notification = new Notification()
+                     {
+                         Title = title,
+                         Body = body
+                     },
+                     Data = new Dictionary<string, string>()
+                     {
+                         { "click_action", "/" }
+                     }
+                 };
+
+                 string response = await messaging.SendAsync(message);
+                 Console.WriteLine($"[FCM] 🚀 Sent Success: {response}");
+             }
+             catch (Exception ex)
+             {
+                 // In lỗi chi tiết
+                 Console.WriteLine($"[FCM] ❌ Error sending: {ex.Message}");
+                 if(ex.InnerException != null)
+                    Console.WriteLine($"[FCM] 🔍 Inner Error: {ex.InnerException.Message}");
+             }
         }
 
         public async Task SendOrderCompletedAsync(string deviceToken, int orderId, string itemName)
         {
-             if (string.IsNullOrEmpty(deviceToken)) 
-             {
-                 Console.WriteLine("--> DeviceToken is null/empty. Cannot send notification.");
-                 return;
-             }
-
-             // TẠO LINK ĐỂ MỞ KHI BẤM VÀO THÔNG BÁO
-             // (Thay localhost bằng IP thật nếu bạn test trên điện thoại thật cùng mạng WiFi)
-             string clickUrl = $"http://localhost:3000/history?orderId={orderId}";
-
-             var message = new Message()
-             {
-                 Token = deviceToken,
-                 
-                 // 1. Phần hiển thị thông báo
-                 Notification = new Notification()
-                 {
-                     Title = "Món ăn đã sẵn sàng! 🍜",
-                     Body = $"Món {itemName} (Đơn #{orderId}) đã nấu xong. Mời bạn dùng bữa! ❤️"
-                 },
-
-                 // 2. Phần dữ liệu ngầm (Quan trọng để xử lý Click)
-                 Data = new Dictionary<string, string>()
-                 {
-                     { "click_action", clickUrl }, // Frontend sẽ dùng cái này để redirect
-                     { "orderId", orderId.ToString() }
-                 }
-             };
-
-             try
-             {
-                 string response = await FirebaseMessaging.DefaultInstance.SendAsync(message);
-                 Console.WriteLine($"--> Sent notification successfully: {response}");
-             }
-             catch (Exception ex)
-             {
-                 Console.WriteLine($"⚠️ Error sending notification: {ex.Message}");
-             }
+             await SendNotificationAsync(
+                deviceToken,
+                "Món ăn đã sẵn sàng! 🍜",
+                $"{itemName} (Đơn #{orderId}) đã xong. Mời bạn thưởng thức! ❤️"
+             );
         }
     }
 }

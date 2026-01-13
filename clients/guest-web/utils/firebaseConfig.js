@@ -1,16 +1,14 @@
-// clients/guest-web/utils/firebaseConfig.js
 import { initializeApp } from "firebase/app";
-import { getMessaging, getToken } from "firebase/messaging";
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
 const firebaseConfig = {
-  // --- COPY TỪ FIREBASE CONSOLE ---
-  apiKey: "AIzaSyD4IJw1x92RbBchKezFkEuHzsUynJ2nsA8", 
-  authDomain: "s2o-restaurant.firebaseapp.com",
-  projectId: "s2o-restaurant",
-  storageBucket: "s2o-restaurant.firebasestorage.app",
-  messagingSenderId: "669538036774",
-  appId: "1:669538036774:web:0a089b6a5d30b089ab4ae7",
-  // --------------------------------
+  apiKey: "AIzaSyD6Vfk-5ndY7hpuyzsm0B-XeAJo_XGgCEo",
+  authDomain: "s20-smart-restaurant.firebaseapp.com",
+  projectId: "s20-smart-restaurant",
+  storageBucket: "s20-smart-restaurant.firebasestorage.app",
+  messagingSenderId: "55637303148",
+  appId: "1:55637303148:web:3f8a21db1605aa94b95d49",
+  measurementId: "G-K7VH5982FP"
 };
 
 let messaging = null;
@@ -29,11 +27,10 @@ export const requestForToken = async () => {
   if (!messaging) return null;
   try {
     const currentToken = await getToken(messaging, { 
-      // VapidKey lấy ở: Firebase Console -> Cloud Messaging -> Web configuration -> Generate Key pair
-      vapidKey: 'BGbkuuGh4Z-Ogq_gfG1xrMOd-c-yN1e6ByRFy4jdL41DhUtmTxQ5SQXdXWN8txREEFh9k-G7ySQPcjjXUgJ6pSQ' 
+      vapidKey: 'BDqwO6Ohv0XdMfxzXzKkgVsweHVgBCnVwNLeR2yt1Rt0v2_gX2hSAvgnj511ZxW8KuHlF9eO839I1_P7VslSBeE' 
     });
     if (currentToken) {
-      console.log("FCM Token:", currentToken);
+      console.log("🔥 FCM Token:", currentToken);
       return currentToken;
     } else {
       console.log("No registration token available.");
@@ -44,3 +41,13 @@ export const requestForToken = async () => {
     return null;
   }
 };
+
+// 🔥 HÀM MỚI: Lắng nghe tin nhắn khi đang mở Web (Ting Ting!)
+export const onMessageListener = () =>
+  new Promise((resolve) => {
+    if (!messaging) return;
+    onMessage(messaging, (payload) => {
+      console.log("📩 Nhận tin nhắn foreground:", payload);
+      resolve(payload);
+    });
+  });

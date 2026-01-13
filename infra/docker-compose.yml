@@ -171,6 +171,8 @@ services:
       - rabbitmq  # Chờ RabbitMQ
     env_file:
       - .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/google-key.json
 
   customer-reservation-service:
     build: ../services/customer-reservation-service
