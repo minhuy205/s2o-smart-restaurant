@@ -1,79 +1,79 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  View, Text, StyleSheet, FlatList, Image, ActivityIndicator, 
-  TouchableOpacity, Alert 
+import {
+  View, Text, StyleSheet, FlatList, Image, ActivityIndicator,
+  TouchableOpacity, Alert
 } from 'react-native';
 
-// Hàm gọi API lấy menu
-const fetchMenu = async (tenantId) => {
-  try {
-    // ⚠️ LƯU Ý: Nếu chạy trên điện thoại thật, nhớ thay localhost bằng IP máy tính
-    // Gọi API: /api/menu?tenantId=...
-    const response = await fetch(`http://localhost:5001/api/menu?tenantId=${tenantId}`);
-    
-    if (!response.ok) {
-        console.error("Lỗi HTTP:", response.status);
-        return [];
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Lỗi lấy menu:", error);
-    return [];
-  }
-};
+
+// 👇 IMPORT QUAN TRỌNG: Gọi API chuẩn
+import { fetchAPI, SERVICES } from '../utils/apiConfig';
+
 
 export default function MenuScreen({ route, navigation }) {
-  // Lấy thông tin nhà hàng từ HomeScreen
+  // Lấy thông tin nhà hàng từ HomeScreen truyền sang
   const { tenant } = route.params;
-  
+ 
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // 👇 SỬA: tenant.name (chữ thường)
-    navigation.setOptions({ title: tenant.name });
 
-    // 👇 SỬA: tenant.id (chữ thường)
-    const tenantId = tenant.id;
-    
-    if (tenantId) {
-      fetchMenu(tenantId).then(data => {
+  // Hàm gọi API lấy menu (Đã sửa)
+  const getMenu = async (tenantId) => {
+    try {
+      // ✅ GỌI API MENU SERVICE (Tự động trỏ đúng Port 7002)
+      const data = await fetchAPI(SERVICES.MENU, `/api/menu?tenantId=${tenantId}`);
+     
+      if (data) {
         setMenuItems(data);
-        setLoading(false);
-      });
+      } else {
+        setMenuItems([]); // Nếu lỗi hoặc rỗng
+      }
+    } catch (error) {
+      console.error("Lỗi lấy menu:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    // Set title cho header
+    if (tenant?.name) {
+      navigation.setOptions({ title: tenant.name });
+    }
+
+
+    // Gọi API lấy thực đơn
+    if (tenant?.id) {
+      getMenu(tenant.id);
     } else {
       console.error("Không tìm thấy tenantId");
       setLoading(false);
     }
   }, []);
 
+
   const renderItem = ({ item }) => (
     <View style={styles.card}>
-      {/* 👇 SỬA: item.imageUrl (chữ thường) */}
-      <Image 
-        source={{ uri: item.imageUrl || 'https://via.placeholder.com/150' }} 
-        style={styles.image} 
+      <Image
+        source={{ uri: item.imageUrl || 'https://via.placeholder.com/150' }}
+        style={styles.image}
       />
-      
+     
       <View style={styles.info}>
-        {/* 👇 SỬA: item.name (chữ thường) */}
         <Text style={styles.name}>{item.name}</Text>
-        
-        {/* 👇 SỬA: item.description (chữ thường) */}
         <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
-        
-        {/* 👇 SỬA: item.price (chữ thường) */}
         <Text style={styles.price}>
           {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price)}
         </Text>
       </View>
-      
-      <TouchableOpacity style={styles.addButton} onPress={() => Alert.alert("Thông báo", `Đã thêm ${item.name}`)}>
+     
+      <TouchableOpacity style={styles.addButton} onPress={() => Alert.alert("Thông báo", `Đã thêm ${item.name} vào giỏ (Demo)`)}>
         <Text style={styles.addText}>+</Text>
       </TouchableOpacity>
     </View>
   );
+
 
   if (loading) {
     return (
@@ -84,16 +84,16 @@ export default function MenuScreen({ route, navigation }) {
     );
   }
 
+
   return (
     <View style={styles.container}>
       {menuItems.length === 0 ? (
         <View style={styles.center}>
-          <Text>Chưa có món ăn nào cho quán này.</Text>
+          <Text style={{color: 'gray'}}>Chưa có món ăn nào cho quán này.</Text>
         </View>
       ) : (
         <FlatList
           data={menuItems}
-          // 👇 SỬA: item.id (chữ thường)
           keyExtractor={(item) => item.id ? item.id.toString() : Math.random().toString()}
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 20 }}
@@ -102,6 +102,7 @@ export default function MenuScreen({ route, navigation }) {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
