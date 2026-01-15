@@ -1,106 +1,177 @@
 /* clients/restaurant-management-web/styles/Kitchen.module.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 .container {
-    padding: 20px;
-    font-family: Arial, sans-serif;
-    background-color: #222;
-    min-height: 100vh;
-    color: white;
-}
-
-.header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+    height: 100vh; /* Chiếm toàn bộ chiều cao màn hình */
+    background-color: #0F172A; /* Slate 900 */
+    color: #F8FAFC;
+    font-family: 'Inter', sans-serif !important;
+    overflow: hidden; /* Không scroll cả trang */
 }
 
-.backLink {
-    color: #aaa;
-    text-decoration: none;
+/* --- CỘT TRÁI: DANH SÁCH ĐƠN --- */
+.sidebar {
+    width: 380px;
+    background: #1E293B; /* Slate 800 */
+    border-right: 1px solid #334155;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.sidebarHeader {
+    padding: 20px;
+    border-bottom: 1px solid #334155;
+    background: #0F172A;
 }
 
 .title {
-    margin-top: 5px;
-    color: #f1c40f;
+    font-size: 20px; font-weight: 800; color: #FBBF24; /* Amber */
+    margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px;
+    display: flex; align-items: center; gap: 10px;
 }
 
-.refreshBtn {
-    padding: 10px 20px;
-    cursor: pointer;
-    background-color: #3498db;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-weight: bold;
+.backLink {
+    text-decoration: none; color: white; font-size: 20px;
+    width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: #334155; margin-right: 10px;
 }
 
-.grid {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    align-items: flex-start;
+/* Tabs Lọc */
+.filterGroup {
+    display: flex; background: #334155; padding: 4px; border-radius: 8px; gap: 4px;
+}
+.filterBtn {
+    flex: 1; padding: 10px; border: none; border-radius: 6px;
+    background: transparent; color: #94A3B8; font-weight: 600; cursor: pointer; transition: 0.2s;
+    font-size: 13px;
+}
+.filterBtn.active {
+    background: #3B82F6; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.emptyState {
-    width: 100%;
-    text-align: center;
-    margin-top: 50px;
-    color: #666;
-}
-
-.ticket {
-    width: 320px;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 20px;
-}
-
-.ticketHeader {
-    padding: 12px 15px;
-    display: flex;
-    justify-content: space-between;
-    font-weight: bold;
-}
-
-.ticketBody {
-    padding: 15px;
-}
-
-.ticketList {
-    padding-left: 0;
-    margin: 0;
-    list-style: none;
-}
-
-.ticketItem {
-    margin-bottom: 10px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 5px;
-}
-
-.itemRow {
-    display: flex;
-    justify-content: space-between;
-    font-weight: bold;
-}
-
-.itemNote {
-    color: red;
-    font-style: italic;
-    font-size: 14px;
-}
-
-.ticketFooter {
-    padding: 10px;
-    display: flex;
-    gap: 10px;
-}
-
-.actionBtn {
+/* Danh sách cuộn dọc */
+.orderList {
     flex: 1;
-    padding: 10px;
-    color: white;
-    border: none;
-    border-radius: 4px;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Thẻ đơn hàng rút gọn (Mini Card) */
+.miniCard {
+    background: #334155;
+    border-radius: 10px;
+    padding: 15px;
     cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.miniCard:hover { background: #475569; }
+
+/* Trạng thái Active (Đang chọn) */
+.miniCard.selected {
+    background: #1E293B;
+    border-color: #3B82F6; /* Viền xanh khi chọn */
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+/* Border màu trạng thái bên trái */
+.miniCard.pending { border-left: 5px solid #F59E0B; }
+.miniCard.cooking { border-left: 5px solid #3B82F6; }
+
+.miniCardHeader {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;
+}
+.tableName { font-size: 16px; font-weight: 700; color: white; }
+.orderId { font-size: 12px; color: #94A3B8; font-family: monospace; }
+.timeAgo { font-size: 12px; color: #CBD5E1; font-weight: 500; display: block; margin-top: 4px;}
+
+/* --- CỘT PHẢI: CHI TIẾT --- */
+.mainContent {
+    flex: 1;
+    background: #0F172A;
+    display: flex;
+    flex-direction: column;
+    padding: 30px;
+    overflow-y: hidden; /* Chỉ scroll phần danh sách món */
+}
+
+/* Empty State */
+.emptySelect {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #475569; text-align: center;
+}
+
+/* Detail View */
+.detailHeader {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #334155;
+}
+.detailTitle { font-size: 32px; font-weight: 800; margin: 0; color: white; }
+.detailMeta { font-size: 16px; color: #94A3B8; margin-top: 5px; }
+
+.statusBadge {
+    padding: 8px 16px; border-radius: 30px; font-size: 14px; font-weight: 700; text-transform: uppercase;
+}
+.bgPending { background: #FEF3C7; color: #D97706; }
+.bgCooking { background: #DBEAFE; color: #1E40AF; }
+
+.itemList {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 10px; /* Để scrollbar không che nội dung */
+}
+
+.detailItem {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 15px; background: #1E293B; margin-bottom: 10px; border-radius: 12px;
+    border: 1px solid #334155;
+}
+.itemName { font-size: 18px; font-weight: 600; color: #F1F5F9; }
+.itemNote {
+    display: inline-block; background: #451a03; color: #FCA5A5; border: 1px solid #7F1D1D;
+    padding: 4px 8px; border-radius: 6px; font-size: 13px; margin-top: 5px; font-weight: 500;
+}
+.itemQty { font-size: 24px; font-weight: 800; color: #FBBF24; background: #422006; padding: 5px 15px; border-radius: 8px; }
+
+/* Action Footer */
+.actionFooter {
+    margin-top: 20px; padding-top: 20px; border-top: 1px solid #334155;
+}
+.btnAction {
+    width: 100%; padding: 18px; border: none; border-radius: 12px;
+    font-size: 18px; font-weight: 800; text-transform: uppercase; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+.btnStart { background: #3B82F6; color: white; }
+.btnStart:hover { background: #2563EB; transform: translateY(-2px); }
+
+.btnDone { background: #10B981; color: white; }
+.btnDone:hover { background: #059669; transform: translateY(-2px); }
+
+/* ... (Giữ nguyên các phần cũ) ... */
+
+/* Thêm màu viền cho thẻ mini trạng thái Đã Xong */
+.miniCard.completed { border-left: 5px solid #10B981; } /* Xanh lá */
+
+/* Badge màu trạng thái */
+.statusBadge {
+    padding: 8px 16px; border-radius: 30px; font-size: 14px; font-weight: 700; text-transform: uppercase;
+}
+.bgPending { background: #FEF3C7; color: #D97706; } /* Vàng */
+.bgCooking { background: #DBEAFE; color: #1E40AF; } /* Xanh dương */
+.bgCompleted { background: #D1FAE5; color: #047857; } /* Xanh lá - MỚI THÊM */
+
+/* Nút Đã Xong (Disabled) */
+.btnDisabled {
+    background: #E2E8F0; color: #94A3B8; cursor: not-allowed;
+    width: 100%; padding: 18px; border: none; border-radius: 12px;
+    font-size: 18px; font-weight: 800; text-transform: uppercase;
 }

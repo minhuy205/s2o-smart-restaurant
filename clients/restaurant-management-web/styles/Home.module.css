@@ -1,118 +1,123 @@
-/* clients/restaurant-management-web/styles/Home.module.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 .container {
-    padding: 40px;
-    font-family: Arial, sans-serif;
-  }
-  
-  .loginContainer {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    background-color: #f0f2f5;
-    font-family: Arial, sans-serif;
-  }
-  
-  .loginForm {
-    padding: 40px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    width: 350px;
-  }
-  
-  .title {
-    text-align: center;
-    color: #333;
-  }
-  
-  .error {
-    color: red;
-    font-size: 14px;
-    text-align: center;
-  }
-  
-  .formGroup {
-    margin-bottom: 15px;
-  }
-  
-  .label {
-    display: block;
-    margin-bottom: 5px;
-  }
-  
-  .input {
-    width: 100%;
-    padding: 10px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+    min-height: 100vh;
+    padding: 40px 20px;
+    background-color: #F1F5F9;
+    font-family: 'Inter', sans-serif !important;
+    display: flex; flex-direction: column; align-items: center;
+}
+
+/* --- LOGIN --- */
+.loginContainer {
+    display: flex; justify-content: center; align-items: center;
+    height: 100vh; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+}
+.loginForm {
+    background: white; padding: 50px; border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2); width: 100%; max-width: 400px;
+}
+.loginForm h2 { text-align: center; margin-bottom: 30px; color: #1E293B; font-weight: 800; }
+.formGroup { margin-bottom: 20px; }
+.label { display: block; margin-bottom: 8px; font-weight: 600; color: #475569; font-size: 14px; }
+.input {
+    width: 100%; padding: 14px; border: 1px solid #E2E8F0; border-radius: 10px;
+    font-size: 15px; outline: none; background: #F8FAFC; transition: 0.2s;
     box-sizing: border-box;
-  }
-  
-  .button {
-    width: 100%;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    color: white;
-    font-weight: bold;
-    background-color: #007bff;
-  }
-  
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .tenantName {
-    color: #d35400;
-    font-weight: bold;
-  }
-  
-  .logoutBtn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    color: white;
-    font-weight: bold;
-    background-color: #dc3545;
-  }
-  
-  .grid {
-    display: flex;
-    gap: 20px;
-    margin-top: 20px;
-    flex-wrap: wrap;
-  }
-  
-  .card {
-    border: 1px solid #ddd;
-    padding: 20px;
-    border-radius: 8px;
-    text-decoration: none;
-    color: black;
-    width: 250px;
-    cursor: pointer;
-    background-color: #fafafa;
-    margin-bottom: 20px;
-    transition: transform 0.2s;
-  }
-  
-  .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  }
-  
-  /* Các biến thể màu sắc cho Card */
-  .cardGreen {
-    background-color: #e8f5e9;
-    border-color: #2ecc71;
-  }
-  
-  .cardYellow {
-    background-color: #fff8e1;
-    border-color: #f1c40f;
-  }
+}
+.input:focus { border-color: #3B82F6; background: white; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+.button {
+    width: 100%; padding: 15px; background: #2563EB; color: white; border: none;
+    border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s;
+}
+.button:hover { background: #1D4ED8; transform: translateY(-1px); }
+.error { background: #FECACA; color: #DC2626; padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+
+/* --- DASHBOARD HEADER --- */
+.headerSection {
+    width: 100%; max-width: 1100px; margin-bottom: 40px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: white; padding: 30px; border-radius: 24px;
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
+    position: relative; overflow: hidden;
+}
+.headerSection::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+    background: linear-gradient(to bottom, #3B82F6, #8B5CF6);
+}
+.profileInfo { display: flex; align-items: center; gap: 25px; z-index: 2; }
+
+.logoWrapper {
+    width: 100px; height: 100px; border-radius: 50%; overflow: hidden;
+    border: 4px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    background: #F1F5F9; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.logoImg { width: 100%; height: 100%; object-fit: cover; }
+.logoPlaceholder { font-size: 40px; }
+
+.textBox h1 { margin: 0; font-size: 28px; font-weight: 800; color: #1E293B; letter-spacing: -0.5px; }
+.metaInfo { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.metaItem { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #64748B; font-weight: 500; }
+.metaIcon { width: 20px; text-align: center; }
+
+.btnEditProfile {
+    padding: 10px 20px; border: 1px solid #E2E8F0; background: white;
+    border-radius: 12px; cursor: pointer; font-weight: 600; color: #475569;
+    transition: 0.2s; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.btnEditProfile:hover { background: #F8FAFC; color: #2563EB; border-color: #2563EB; transform: translateY(-2px); }
+
+/* --- GRID --- */
+.grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 30px; width: 100%; max-width: 1100px;
+}
+.card {
+    background: white; border-radius: 20px; padding: 30px 20px;
+    text-align: center; text-decoration: none; color: inherit;
+    border: 1px solid transparent; box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    transition: all 0.3s ease; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 220px;
+}
+.card:hover { transform: translateY(-8px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border-color: #E2E8F0; }
+
+.iconBox {
+    width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 32px; margin-bottom: 20px; background: #F1F5F9; transition: 0.3s;
+}
+.card:hover .iconBox { transform: scale(1.1) rotate(5deg); }
+.cardTitle { font-size: 18px; font-weight: 700; color: #1E293B; margin-bottom: 8px; }
+.cardDesc { font-size: 13px; color: #94A3B8; line-height: 1.5; padding: 0 10px; }
+
+/* Colors */
+.cardBlue:hover .iconBox { background: #EFF6FF; color: #3B82F6; }
+.cardGreen:hover .iconBox { background: #F0FDF4; color: #10B981; }
+.cardOrange:hover .iconBox { background: #FFF7ED; color: #F97316; }
+.cardPurple:hover .iconBox { background: #FAF5FF; color: #8B5CF6; }
+.cardTeal:hover .iconBox { background: #F0FDFA; color: #14B8A6; }
+
+.logoutBtn {
+    margin-top: 50px; padding: 12px 30px; background-color: #EF4444; color: white;
+    border: none; border-radius: 50px; cursor: pointer; font-weight: 600;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); transition: 0.2s;
+}
+.logoutBtn:hover { background-color: #DC2626; transform: translateY(-2px); }
+
+/* --- MODAL --- */
+.modalOverlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+    display: flex; justify-content: center; align-items: center; z-index: 1000;
+}
+.modal {
+    background: white; width: 500px; padding: 40px; border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.modalHeader { font-size: 22px; font-weight: 800; margin-bottom: 25px; color: #1E293B; text-align: center; }
+.btnSave { background: #2563EB; color: white; padding: 14px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; width: 100%; margin-top: 15px; }
+.btnCancel { background: #F1F5F9; color: #64748B; padding: 14px; border-radius: 12px; border: none; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px; }

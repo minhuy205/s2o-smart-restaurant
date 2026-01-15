@@ -1,12 +1,12 @@
 import React from 'react';
 
-// Helper render Badge (Dùng class CSS)
-const renderBadge = (status) => {
+// Helper render Badge (Dùng inline style theo yêu cầu)
+const getStatusBadge = (status) => {
     switch(status) {
-        case 'OutOfStock': return <span className="badge bg-red">Hết</span>;
-        case 'ComingSoon': return <span className="badge bg-orange">Sắp có</span>;
-        case 'BestSeller': return <span className="badge bg-gold">Best Seller</span>;
-        case 'Promo': return <span className="badge bg-purple">Sale</span>;
+        case 'OutOfStock': return <span style={{background:'#e74c3c', color:'white', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>Hết hàng</span>;
+        case 'ComingSoon': return <span style={{background:'#f39c12', color:'white', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>Sắp có</span>;
+        case 'BestSeller': return <span style={{background:'#f1c40f', color:'black', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>🔥 Best Seller</span>;
+        case 'Promo': return <span style={{background:'#9b59b6', color:'white', padding:'4px 8px', borderRadius:4, fontSize:11, fontWeight:'bold'}}>🏷️ Khuyến mãi</span>;
         default: return null;
     }
 };
@@ -34,7 +34,7 @@ const ItemCard = ({ item, onClick, onAdd }) => {
                 {/* Badge Status */}
                 {item.status && item.status !== 'Available' && (
                     <div className="status-badge-wrapper">
-                        {renderBadge(item.status)}
+                        {getStatusBadge(item.status)}
                     </div>
                 )}
 

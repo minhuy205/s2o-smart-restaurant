@@ -71,7 +71,7 @@ firebase-key.json
 firebase-service-account.json
 google-services.json
 GoogleService-Info.plist
-
+google-key.json
 # Các file chứa biến môi trường khác
 **/secrets/
 **/config/secrets.json

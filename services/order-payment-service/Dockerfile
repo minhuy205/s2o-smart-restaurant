@@ -8,4 +8,5 @@ RUN dotnet publish -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
+COPY google-key.json /app/google-key.json
 ENTRYPOINT ["dotnet", "OrderPaymentService.dll"]
