@@ -327,6 +327,61 @@ public static class AuthEndpoints
                 return Results.Problem($"Lỗi: {ex.Message}");
             }
         });
+
+        // --- 6. API ADMIN - LẤY DANH SÁCH KHÁCH HÀNG ---
+        app.MapGet("/api/admin/customers", async (AuthDbContext db, HttpContext context, int? limit) =>
+        {
+            try 
+            {
+                // Kiểm tra token
+                var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                // Parse token để lấy role
+                var handler = new JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token);
+                
+                var role = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value 
+                    ?? jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
+
+                Console.WriteLine($"[ADMIN CUSTOMERS] Token Role Claim: {role ?? "NULL"}");
+
+                if (string.IsNullOrEmpty(role) || role != "Admin")
+                {
+                    return Results.Json(new { message = "Chỉ Admin mới có quyền truy cập" }, statusCode: 403);
+                }
+
+                // Lấy danh sách khách hàng (tất cả users trừ Admin)
+                var query = db.Users
+                    .Where(u => u.Role != "Admin")
+                    .OrderByDescending(u => u.CreatedAt)
+                    .Select(u => new 
+                    {
+                        id = u.Id,
+                        username = u.Username,
+                        fullName = u.FullName ?? u.Username,
+                        phoneNumber = u.PhoneNumber,
+                        points = u.Points,
+                        role = u.Role,
+                        createdAt = u.CreatedAt
+                    });
+
+                var customers = limit.HasValue && limit.Value > 0
+                    ? await query.Take(limit.Value).ToListAsync()
+                    : await query.ToListAsync();
+
+                Console.WriteLine($"[ADMIN CUSTOMERS] Returned {customers.Count} customers");
+                return Results.Ok(customers);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] /api/admin/customers: {ex.Message}");
+                return Results.Problem($"Lỗi: {ex.Message}");
+            }
+        });
     }
 
     private static string GenerateJwtToken(User user, IConfiguration config)

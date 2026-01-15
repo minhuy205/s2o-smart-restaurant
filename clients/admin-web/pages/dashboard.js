@@ -478,28 +478,63 @@ function OrdersPage({ user }) {
 }
 
 function CustomersPage({ user }) {
+  const [customers, setCustomers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    fetchCustomers()
+  }, [])
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true)
+      const token = localStorage.getItem("s2o_token")
+      const apiBase = "http://localhost:7001"
+      const response = await fetch(`${apiBase}/api/admin/customers`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      console.log("[CustomersPage] API Response Status:", response.status)
+      if (!response.ok) {
+        const text = await response.text().catch(() => null)
+        throw new Error(`Failed to fetch customers: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      console.log("[CustomersPage] Fetched customers:", data)
+      setCustomers(data || [])
+      setError(null)
+    } catch (err) {
+      console.error("[CustomersPage] Error fetching customers:", err)
+      setError(err.message)
+      setCustomers([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <>
       <div className="dashboard-stats-grid">
         <div className="dashboard-stat-card">
           <span className="dashboard-stat-icon">👥</span>
-          <div className="dashboard-stat-value">8,291</div>
+          <div className="dashboard-stat-value">{customers.length}</div>
           <div className="dashboard-stat-label">Tổng khách hàng</div>
         </div>
         <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">🌟</span>
-          <div className="dashboard-stat-value">1,245</div>
-          <div className="dashboard-stat-label">Khách VIP</div>
-        </div>
-        <div className="dashboard-stat-card">
           <span className="dashboard-stat-icon">📅</span>
-          <div className="dashboard-stat-value">156</div>
+          <div className="dashboard-stat-value">
+            {customers.filter(c => {
+              const createdDate = new Date(c.createdAt)
+              const now = new Date()
+              return createdDate.getMonth() === now.getMonth() && createdDate.getFullYear() === now.getFullYear()
+            }).length}
+          </div>
           <div className="dashboard-stat-label">Khách mới (tháng này)</div>
-        </div>
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">🎯</span>
-          <div className="dashboard-stat-value">92%</div>
-          <div className="dashboard-stat-label">Tỷ lệ giữ chân</div>
         </div>
       </div>
 
@@ -511,46 +546,46 @@ function CustomersPage({ user }) {
             <button className="dashboard-btn dashboard-btn-primary">+ Thêm khách hàng</button>
           </div>
         </div>
-        <table className="dashboard-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Tên khách hàng</th>
-              <th>Email</th>
-              <th>Số điện thoại</th>
-              <th>Tổng đơn</th>
-              <th>Tổng chi tiêu</th>
-              <th>Hạng</th>
-              <th>Ngày tham gia</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>#CUS-001</td>
-              <td>Nguyễn Văn A</td>
-              <td>nguyenvana@email.com</td>
-              <td>0901234567</td>
-              <td>24</td>
-              <td>2,450,000đ</td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-warning">VIP</span>
-              </td>
-              <td>15/01/2024</td>
-            </tr>
-            <tr>
-              <td>#CUS-002</td>
-              <td>Trần Thị B</td>
-              <td>tranthib@email.com</td>
-              <td>0912345678</td>
-              <td>18</td>
-              <td>1,890,000đ</td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-info">Thường</span>
-              </td>
-              <td>20/02/2024</td>
-            </tr>
-          </tbody>
-        </table>
+
+        {loading && <p style={{ padding: "20px", textAlign: "center" }}>Đang tải dữ liệu...</p>}
+        {error && <p style={{ padding: "20px", textAlign: "center", color: "red" }}>Lỗi: {error}</p>}
+
+        {!loading && customers.length === 0 && (
+          <p style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>Không có khách hàng nào</p>
+        )}
+
+        {!loading && customers.length > 0 && (
+          <table className="dashboard-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tên khách hàng</th>
+                <th>Email/Username</th>
+                <th>Số điện thoại</th>
+                <th>Điểm tích lũy</th>
+                <th>Hạng</th>
+                <th>Ngày tham gia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {customers.map((customer) => (
+                <tr key={customer.id}>
+                  <td>#{customer.id}</td>
+                  <td>{customer.fullName}</td>
+                  <td>{customer.username}</td>
+                  <td>{customer.phoneNumber || "N/A"}</td>
+                  <td>{customer.points}</td>
+                  <td>
+                    <span className={`dashboard-badge ${customer.points >= 100 ? "dashboard-badge-warning" : "dashboard-badge-info"}`}>
+                      {customer.points >= 100 ? "VIP" : "Thường"}
+                    </span>
+                  </td>
+                  <td>{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </>
   )
