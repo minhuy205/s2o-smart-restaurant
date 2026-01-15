@@ -268,6 +268,65 @@ public static class AuthEndpoints
             if (tenant == null) return Results.NotFound();
             return Results.Ok(new { id = tenant.Id, name = tenant.Name, address = tenant.Address, logoUrl = tenant.LogoUrl });
         });
+
+        // --- 5. API ADMIN - LẤY DANH SÁCH TẤT CẢ CÁC NHÀ HÀNG ---
+        app.MapGet("/api/admin/tenants", async (AuthDbContext db, HttpContext context, int? limit) =>
+        {
+            try 
+            {
+                // Kiểm tra token
+                var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+                if (string.IsNullOrEmpty(token))
+                {
+                    return Results.Unauthorized();
+                }
+
+                // Parse token để lấy role
+                var handler = new JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token);
+                
+                // Try both claim type variations
+                var role = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value 
+                    ?? jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
+
+                Console.WriteLine($"[ADMIN TENANTS] Token Role Claim: {role ?? "NULL"}");
+                Console.WriteLine($"[ADMIN TENANTS] All Claims: {string.Join(", ", jwtToken.Claims.Select(c => $"{c.Type}={c.Value}"))}");
+
+                if (string.IsNullOrEmpty(role) || role != "Admin")
+                {
+                    return Results.Json(new { message = "Chỉ Admin mới có quyền truy cập" }, statusCode: 403);
+                }
+
+                // Lấy danh sách nhà hàng với thông tin owner từ bảng Users
+                var query = from t in db.Tenants
+                            join u in db.Users on t.Id equals u.TenantId into users
+                            from owner in users.Where(u => u.Role == "Owner").DefaultIfEmpty()
+                            orderby t.CreatedAt descending
+                            select new 
+                            {
+                                id = t.Id,
+                                name = t.Name,
+                                address = t.Address,
+                                phoneNumber = owner != null ? owner.PhoneNumber : t.PhoneNumber,
+                                logoUrl = t.LogoUrl,
+                                ownerName = owner != null ? owner.FullName : t.OwnerName,
+                                isActive = t.IsActive,
+                                createdAt = t.CreatedAt
+                            };
+
+                var tenants = limit.HasValue && limit.Value > 0
+                    ? await query.Take(limit.Value).ToListAsync()
+                    : await query.ToListAsync();
+
+                Console.WriteLine($"[ADMIN TENANTS] Returned {tenants.Count} tenants");
+                return Results.Ok(tenants);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] /api/admin/tenants: {ex.Message}");
+                return Results.Problem($"Lỗi: {ex.Message}");
+            }
+        });
     }
 
     private static string GenerateJwtToken(User user, IConfiguration config)

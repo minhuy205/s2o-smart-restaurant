@@ -123,6 +123,42 @@ function getPageTitle(page) {
 }
 
 function OverviewPage({ user }) {
+  const [restaurants, setRestaurants] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        setLoading(true)
+        const token = localStorage.getItem("s2o_token")
+        const apiBase = "http://localhost:7001"
+        const res = await fetch(`${apiBase}/api/admin/tenants?limit=8`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
+
+        console.log("[OverviewPage] API Response Status:", res.status)
+        if (!res.ok) {
+          const errorText = await res.text()
+          throw new Error(`HTTP ${res.status}: ${errorText}`)
+        }
+        const data = await res.json()
+        console.log("[OverviewPage] Fetched restaurants:", data)
+        if (mounted && Array.isArray(data)) setRestaurants(data.slice(0, 8))
+      } catch (e) {
+        console.error("Error fetching overview restaurants:", e)
+        if (mounted) setError(e.message || "Lỗi tải dữ liệu")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    })()
+    return () => (mounted = false)
+  }, [])
+
   return (
     <>
       {/* Stats Cards */}
@@ -145,83 +181,59 @@ function OverviewPage({ user }) {
           <div className="dashboard-stat-label">Khách hàng</div>
           <div className="dashboard-stat-change positive">↑ 23% so với tháng trước</div>
         </div>
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">💰</span>
-          <div className="dashboard-stat-value">1.2M</div>
-          <div className="dashboard-stat-label">Doanh thu (VNĐ)</div>
-          <div className="dashboard-stat-change positive">↑ 15% so với tháng trước</div>
-        </div>
       </div>
 
-      {/* Charts */}
-      <div className="dashboard-charts-grid">
-        <div className="dashboard-chart-card">
-          <h3 className="dashboard-chart-title">Doanh thu 7 ngày qua</h3>
-          <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ color: "#6b7280" }}>📊 Biểu đồ doanh thu (Sẽ tích hợp Chart.js)</p>
-          </div>
-        </div>
-        <div className="dashboard-chart-card">
-          <h3 className="dashboard-chart-title">Top nhà hàng</h3>
-          <div style={{ paddingTop: 20 }}>
-            <TopRestaurantItem name="Phở Hà Nội 24" revenue="245K" change="+12%" />
-            <TopRestaurantItem name="Bún Chả Hương Liên" revenue="198K" change="+8%" />
-            <TopRestaurantItem name="Cơm Tấm Sài Gòn" revenue="176K" change="+5%" />
-            <TopRestaurantItem name="Bánh Mì 37" revenue="156K" change="+3%" />
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Orders */}
-      <div className="dashboard-table-container">
+      {/* Registered restaurants table */}
+      <div className="dashboard-table-container" style={{ marginTop: 20 }}>
         <div className="dashboard-table-header">
-          <h3 className="dashboard-table-title">Đơn hàng gần đây</h3>
+          <h3 className="dashboard-table-title">Danh sách nhà hàng đã đăng ký</h3>
           <button className="dashboard-btn dashboard-btn-secondary">Xem tất cả</button>
         </div>
-        <table className="dashboard-table">
-          <thead>
-            <tr>
-              <th>Mã đơn</th>
-              <th>Nhà hàng</th>
-              <th>Khách hàng</th>
-              <th>Tổng tiền</th>
-              <th>Trạng thái</th>
-              <th>Thời gian</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>#ORD-1234</td>
-              <td>Phở Hà Nội 24</td>
-              <td>Nguyễn Văn A</td>
-              <td>245,000đ</td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-success">Hoàn thành</span>
-              </td>
-              <td>5 phút trước</td>
-            </tr>
-            <tr>
-              <td>#ORD-1233</td>
-              <td>Bún Chả Hương Liên</td>
-              <td>Trần Thị B</td>
-              <td>180,000đ</td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-warning">Đang xử lý</span>
-              </td>
-              <td>12 phút trước</td>
-            </tr>
-            <tr>
-              <td>#ORD-1232</td>
-              <td>Cơm Tấm Sài Gòn</td>
-              <td>Lê Văn C</td>
-              <td>320,000đ</td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-success">Hoàn thành</span>
-              </td>
-              <td>25 phút trước</td>
-            </tr>
-          </tbody>
-        </table>
+
+        {loading && <p style={{ padding: "20px", textAlign: "center" }}>Đang tải dữ liệu...</p>}
+        {error && <p style={{ padding: "20px", textAlign: "center", color: "red" }}>Lỗi: {error}</p>}
+
+        {!loading && restaurants.length === 0 && (
+          <p style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>Không có nhà hàng đăng ký</p>
+        )}
+
+        {!loading && restaurants.length > 0 && (
+          <table className="dashboard-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tên nhà hàng</th>
+                <th>Chủ quán</th>
+                <th>Địa chỉ</th>
+                <th>Điện thoại</th>
+                <th>Trạng thái</th>
+                <th>Ngày đăng ký</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {restaurants.map((r) => (
+                <tr key={r.id}>
+                  <td>#{r.id}</td>
+                  <td>{r.name}</td>
+                  <td>{r.ownerName || "N/A"}</td>
+                  <td>{r.address || "-"}</td>
+                  <td>{r.phoneNumber || "-"}</td>
+                  <td>
+                    <span className={`dashboard-badge ${r.isActive ? "dashboard-badge-success" : "dashboard-badge-warning"}`}>
+                      {r.isActive ? "Hoạt động" : "Chờ duyệt"}
+                    </span>
+                  </td>
+                  <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "-"}</td>
+                  <td>
+                    <button className="dashboard-action-btn dashboard-action-btn-edit">Xem</button>
+                    <button className="dashboard-action-btn dashboard-action-btn-delete">Xóa</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </>
   )
@@ -241,8 +253,7 @@ function RestaurantsPage({ user }) {
     try {
       setLoading(true)
       const token = localStorage.getItem("s2o_token")
-      // Use NEXT_PUBLIC_API_URL (Next.js) if provided, otherwise default to tenant-auth-service port used in docker-compose (7001)
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL || "http://localhost:7001"
+      const apiBase = "http://localhost:7001"
       const response = await fetch(`${apiBase}/api/admin/tenants`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -250,17 +261,18 @@ function RestaurantsPage({ user }) {
         },
       })
 
+      console.log("[RestaurantsPage] API Response Status:", response.status)
       if (!response.ok) {
         const text = await response.text().catch(() => null)
         throw new Error(`Failed to fetch restaurants: ${response.status} ${response.statusText} ${text || ''}`)
       }
 
       const data = await response.json()
-      console.log("[v0] Fetched tenants:", data)
+      console.log("[RestaurantsPage] Fetched tenants:", data)
       setRestaurants(data || [])
       setError(null)
     } catch (err) {
-      console.error("[v0] Error fetching restaurants:", err)
+      console.error("[RestaurantsPage] Error fetching restaurants:", err)
       setError(err.message)
       setRestaurants([])
     } finally {
@@ -584,22 +596,4 @@ function SettingsPage({ user }) {
   )
 }
 
-function TopRestaurantItem({ name, revenue, change }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "12px 0",
-        borderBottom: "1px solid #f3f4f6",
-      }}
-    >
-      <div>
-        <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>{name}</div>
-        <div style={{ fontSize: 13, color: "#6b7280" }}>Doanh thu: {revenue}</div>
-      </div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#16a34a" }}>{change}</div>
-    </div>
-  )
-}
+
