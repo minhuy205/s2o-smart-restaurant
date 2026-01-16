@@ -46,6 +46,21 @@ namespace OrderPaymentService.Controllers
                 .ToListAsync();
         }
 
+        // --- THÊM ĐOẠN NÀY VÀO --- Hoàng Long
+        // 1.1 GET: Lấy chi tiết 1 đơn hàng theo ID (Cho AI gọi)
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Order>> GetOrderById(int id)
+        {
+            var order = await _context.Orders
+                .Include(o => o.Items)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null) return NotFound();
+
+            return order;
+        }
+        // ---------------------------
+
         // 2. POST: Tạo đơn hàng (Dùng DTO để nhận Token chuẩn xác + Fix giờ VN)
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto request)
@@ -65,7 +80,7 @@ namespace OrderPaymentService.Controllers
                 Status = "Pending",
                 
                 // 🔥 SỬA LỖI GIỜ: Cộng thêm 7 tiếng để ra giờ Việt Nam
-                CreatedAt = DateTime.UtcNow, 
+                CreatedAt = DateTime.UtcNow.AddHours(7), 
                 
                 // Gán Token từ request vào Order để lưu DB
                 DeviceToken = request.DeviceToken, 
