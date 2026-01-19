@@ -24,7 +24,9 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                         
                         return isSameTable && !isHidden;
                     })
-                    .sort((a, b) => new Date(b.createdDate || 0) - new Date(a.createdDate || 0));
+                    // Sắp xếp: Mới nhất lên đầu
+                    // Fallback 'createdDate' cho các version cũ, 'createdAt' cho version mới
+                    .sort((a, b) => new Date(b.createdAt || b.createdDate || 0) - new Date(a.createdAt || a.createdDate || 0));
                 
                 setOrders(myOrders);
             }
@@ -47,10 +49,10 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
     const getStatusInfo = (status) => {
         const s = (status || '').toLowerCase();
         
-        // 🟢 Đã thanh toán (Thường sẽ bị ẩn bởi logic trên, nhưng giữ đây cho chắc)
+        // 🟢 Đã thanh toán
         if (s === 'paid') return { text: 'Đã thanh toán', bg: '#ECFDF5', color: '#059669', border: '#D1FAE5' };
         
-        // 🔵 Đã xong / Đã lên món (Vẫn hiện để khách check)
+        // 🔵 Đã xong / Đã lên món
         if (s === 'completed' || s === 'served') return { text: 'Đã lên món', bg: '#EFF6FF', color: '#2563EB', border: '#DBEAFE' };
         
         // 🟠 Đang làm
@@ -63,11 +65,23 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
         return { text: 'Chờ xác nhận', bg: '#F3F4F6', color: '#4B5563', border: '#E5E7EB' };
     };
 
+    // --- SỬA LOGIC HIỂN THỊ GIỜ (Force Timezone VN) ---
     const formatTime = (dateStr) => {
         if(!dateStr) return '';
         const d = new Date(dateStr);
-        return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')} • ${d.getDate()}/${d.getMonth()+1}`;
+        
+        // Ép buộc hiển thị theo giờ Việt Nam (Asia/Ho_Chi_Minh)
+        // Bất kể Backend trả về UTC hay điện thoại khách ở múi giờ khác
+        return d.toLocaleTimeString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit', 
+            month: '2-digit',
+            hour12: false,
+            timeZone: 'Asia/Ho_Chi_Minh' 
+        }).replace(',', ' •');
     }
+    // --------------------------------------------------
 
     // Tính tổng tạm tính của các đơn đang hiện
     const grandTotal = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
@@ -96,10 +110,13 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                         <>
                             {orders.map((order) => {
                                 const st = getStatusInfo(order.status);
+                                // Ưu tiên dùng createdAt từ Backend mới, fallback về createdDate nếu cũ
+                                const displayDate = order.createdAt || order.createdDate;
+
                                 return (
                                     <div key={order.id} className="order-card-pro">
                                         <div className="order-header-row">
-                                            <span className="order-time">🕒 {formatTime(order.createdDate)}</span>
+                                            <span className="order-time">🕒 {formatTime(displayDate)}</span>
                                             <span className="status-badge" style={{backgroundColor:st.bg, color:st.color, border:`1px solid ${st.border}`}}>
                                                 {st.text}
                                             </span>

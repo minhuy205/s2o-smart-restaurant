@@ -20,6 +20,8 @@ public class LoginRequest
 public class AuthResponse
 {
     public string Token { get; set; } = string.Empty;
+    // 👇 QUAN TRỌNG: Thêm ID để App biết user nào đang đăng nhập
+    public int Id { get; set; } 
     public string Username { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
@@ -48,4 +50,20 @@ public class UpdateTenantRequest
     public string? PhoneNumber { get; set; }
     public string? LogoUrl { get; set; }
     public bool? IsActive { get; set; }
+}
+
+// 👇 Dùng cho cập nhật Profile trên Mobile App
+public class UpdateProfileRequest
+{
+    public string FullName { get; set; }
+    public string PhoneNumber { get; set; }
+}
+
+// 👇 Dùng cho đăng nhập Google trên Mobile App
+public class GoogleAuthRequest
+{
+    public string Email { get; set; }
+    public string FullName { get; set; }
+    public string GoogleId { get; set; }
+    public string PhotoUrl { get; set; }
 }

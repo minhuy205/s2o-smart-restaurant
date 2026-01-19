@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
-import { requestForToken, onMessageListener } from '../utils/firebaseConfig'; 
+// 👇 Vẫn import để lấy Token, nhưng không dùng onMessageListener nữa
+import { requestForToken } from '../utils/firebaseConfig'; 
 
 import CartFooter from '../components/Cart/CartFooter';
 import ItemCard from '../components/Menu/ItemCard'; 
@@ -10,11 +11,11 @@ import OrderHistory from '../components/OrderHistory';
 
 const CATEGORY_MAP = { 1: 'Món nước', 2: 'Món khô', 3: 'Đồ uống', 4: 'Tráng miệng', 5: 'Khác' };
 
-// 👇 ĐÂY LÀ CHỖ QUAN TRỌNG NHẤT: ID PHẢI KHỚP VỚI CSDL VÀ MODAL
+// ID phải khớp với Database và Switch Case
 const SPECIAL_CATS = [
-  { id: 'BestSeller', name: '🔥 Best Seller' }, // Chữ S viết hoa
-  { id: 'Promo',      name: '🏷️ Khuyến mãi' },       // Khớp với switch case
-  { id: 'ComingSoon', name: '🟡 Sắp có' }       // Khớp với switch case
+  { id: 'BestSeller', name: '🔥 Best Seller' }, 
+  { id: 'Promo',      name: '🏷️ Khuyến mãi' },       
+  { id: 'ComingSoon', name: '🟡 Sắp có' }       
 ];
 
 const removeAccents = (str) => {
@@ -30,7 +31,11 @@ export default function GuestMenu() {
   const [tableInfo, setTableInfo] = useState(null);
   const [cart, setCart] = useState([]); 
   const [loading, setLoading] = useState(true);
+  
+  // State xử lý Loading & Popup Thành công
+  const [isOrdering, setIsOrdering] = useState(false); 
   const [orderSent, setOrderSent] = useState(false); 
+
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [isCartOpen, setIsCartOpen] = useState(false); 
   const [deviceToken, setDeviceToken] = useState(null); 
@@ -44,14 +49,14 @@ export default function GuestMenu() {
     if (tenantId && tableId) loadRestaurantData(tenantId, tableId);
   }, [tenantId, tableId]);
 
+  // 👇 ĐÃ SỬA: Chỉ lấy Token, KHÔNG hiện Alert khi có tin nhắn nữa
   useEffect(() => {
     if (typeof window !== 'undefined') {
         requestForToken().then(token => {
             if (token) setDeviceToken(token);
         });
-        onMessageListener().then(payload => {
-            alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
-        }).catch(err => console.log('Lỗi nghe tin:', err));
+        
+        // ❌ Đã xóa đoạn onMessageListener alert(...) gây phiền
     }
   }, []);
 
@@ -59,28 +64,32 @@ export default function GuestMenu() {
     setLoading(true);
     let tempInfo = { name: `Bàn #${tbid}` };
     
-    const tenant = await fetchAPI(SERVICES.AUTH, `/api/tenants/${tid}`);
-    if(tenant) {
-        tempInfo = { 
-            ...tempInfo, 
-            restaurantName: tenant.name,
-            address: tenant.address || 'Đang cập nhật',
-            logoUrl: tenant.logoUrl
-        };
-    }
-    
-    const menu = await fetchAPI(SERVICES.MENU, `/api/menu?tenantId=${tid}`);
-    if (menu) {
-        setAllMenuItems(menu.map(i => ({
-            ...i, 
-            category: CATEGORY_MAP[i.categoryId] || i.category || 'Khác'
-        })));
-    }
-    
-    const tables = await fetchAPI(SERVICES.MENU, `/api/tables?tenantId=${tid}`);
-    if (tables) {
-        const found = tables.find(t => t.id == tbid);
-        if (found) tempInfo = { ...tempInfo, name: found.name };
+    try {
+        const tenant = await fetchAPI(SERVICES.AUTH, `/api/tenants/${tid}`);
+        if(tenant) {
+            tempInfo = { 
+                ...tempInfo, 
+                restaurantName: tenant.name,
+                address: tenant.address || 'Đang cập nhật',
+                logoUrl: tenant.logoUrl
+            };
+        }
+        
+        const menu = await fetchAPI(SERVICES.MENU, `/api/menu?tenantId=${tid}`);
+        if (menu) {
+            setAllMenuItems(menu.map(i => ({
+                ...i, 
+                category: CATEGORY_MAP[i.categoryId] || i.category || 'Khác'
+            })));
+        }
+        
+        const tables = await fetchAPI(SERVICES.MENU, `/api/tables?tenantId=${tid}`);
+        if (tables) {
+            const found = tables.find(t => t.id == tbid);
+            if (found) tempInfo = { ...tempInfo, name: found.name };
+        }
+    } catch (e) {
+        console.error("Lỗi tải dữ liệu:", e);
     }
     setTableInfo(tempInfo);
     setLoading(false);
@@ -103,21 +112,14 @@ export default function GuestMenu() {
       return allMenuItems.filter(item => removeAccents(item.name).includes(lowerTerm));
   }, [searchTerm, allMenuItems]);
 
-  // 🔥 LOGIC LỌC MỚI (CHÍNH XÁC)
+  // LOGIC LỌC
   const displayedItemsByTab = useMemo(() => {
       if (selectedCategory === 'Tất cả') return allMenuItems; 
-
-      // Kiểm tra xem có phải đang chọn nút Đặc biệt (BestSeller, Promo...)
       const isSpecialCat = SPECIAL_CATS.some(c => c.id === selectedCategory);
-      
       if (isSpecialCat) {
-          // So sánh chính xác chuỗi trong DB với ID của nút bấm
           return allMenuItems.filter(i => i.status === selectedCategory);
       }
-
-      // Nếu không phải đặc biệt -> Lọc theo Category
       return allMenuItems.filter(i => i.category === selectedCategory);
-
   }, [selectedCategory, allMenuItems]);
 
   const handleAddToCart = (item, quantity, note = '') => {
@@ -133,8 +135,13 @@ export default function GuestMenu() {
   const setQuantityDirect = (cartId, val) => setCart(prev => prev.map(i => i.cartId === cartId ? { ...i, quantity: val } : i).filter(i => i.quantity > 0));
   const updateNote = (cartId, newNote) => setCart(prev => prev.map(i => i.cartId === cartId ? { ...i, note: newNote } : i));
 
+  // 👇 HÀM ĐẶT MÓN (Giữ nguyên logic hiển thị Popup thành công)
   const handlePlaceOrder = async () => {
     if (!cart.length) return;
+    
+    // 1. Bật trạng thái loading
+    setIsOrdering(true);
+    
     const payload = {
         tableName: tableInfo?.name, 
         totalAmount: cart.reduce((s, i) => s + i.price * i.quantity, 0),
@@ -144,22 +151,34 @@ export default function GuestMenu() {
         deviceToken: deviceToken, 
         items: cart.map(i => ({ menuItemName: i.name, price: i.price, quantity: i.quantity, note: i.note || "" }))
     };
+    
     try {
         const res = await fetchAPI(SERVICES.ORDER, '/api/orders', { method: 'POST', body: JSON.stringify(payload) });
+        
         if(res) { 
-            setOrderSent(true); 
-            setCart([]); 
+            // 2. Đóng giỏ hàng
             setIsCartOpen(false); 
+            // 3. Xóa giỏ hàng
+            setCart([]); 
+            // 4. Mở Popup thành công (Delay nhẹ để mượt)
+            setTimeout(() => {
+                setOrderSent(true); 
+            }, 300);
         }
     } catch (err) {
+        console.error("Lỗi đặt món:", err);
         alert("Có lỗi khi đặt món. Vui lòng thử lại!");
+    } finally {
+        // 5. Tắt loading
+        setIsOrdering(false);
     }
   };
 
-  if(loading) return <div style={{padding:40, textAlign:'center'}}>Đang tải...</div>;
+  if(loading) return <div style={{padding:40, textAlign:'center'}}>Đang tải thực đơn...</div>;
 
   return (
     <div>
+      {/* 🔹 Header */}
       <div className="header-container">
           <div className="header-info-section">
               <div className="logo-wrapper">
@@ -186,7 +205,6 @@ export default function GuestMenu() {
                   <div className="category-nav">
                       <button className={`cat-btn ${selectedCategory === 'Tất cả' ? 'active' : ''}`} onClick={() => setSelectedCategory('Tất cả')}>Tất cả</button>
                       
-                      {/* Render các nút Đặc Biệt */}
                       {SPECIAL_CATS.map(cat => (
                         <button 
                           key={cat.id} 
@@ -198,7 +216,6 @@ export default function GuestMenu() {
                         </button>
                       ))}
 
-                      {/* Render các nút Danh mục thường */}
                       {categories.filter(c => c !== 'Tất cả').map(cat => (
                           <button key={cat} className={`cat-btn ${selectedCategory === cat ? 'active' : ''}`} onClick={() => setSelectedCategory(cat)}>{cat}</button>
                       ))}
@@ -207,7 +224,8 @@ export default function GuestMenu() {
           )}
       </div>
 
-      <div style={{paddingTop: '10px'}}>
+      {/* 🔹 Danh sách món */}
+      <div style={{paddingTop: '10px', paddingBottom: '80px'}}>
         {searchTerm ? (
             <div className="menu-section">
                 <div className="menu-section-title">Kết quả tìm kiếm ({searchResults.length})</div>
@@ -233,20 +251,21 @@ export default function GuestMenu() {
                 ))
             ) : (
                 <div className="menu-section">
-                     {displayedItemsByTab.length === 0 ? (
+                      {displayedItemsByTab.length === 0 ? (
                         <div style={{textAlign: 'center', padding: 40, color: '#666'}}>Chưa có món nào trong mục này!</div>
-                     ) : (
+                      ) : (
                         <div className="menu-grid" style={{marginTop: 15}}>
                             {displayedItemsByTab.map(item => (
                                 <ItemCard key={item.id} item={item} onClick={setSelectedItem} onAdd={(i) => handleAddToCart(i, 1)} />
                             ))}
                         </div>
-                     )}
+                      )}
                 </div>
             )
         )}
       </div>
       
+      {/* 🔹 Các Modal */}
       {selectedItem && <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} />}
       {showHistory && <OrderHistory tenantId={tenantId} tableId={tableInfo?.name} address={tableInfo?.address} onClose={() => setShowHistory(false)} />}
       
@@ -254,10 +273,30 @@ export default function GuestMenu() {
         cart={cart} isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} handlePlaceOrder={handlePlaceOrder} 
         updateQuantity={updateQuantity} setQuantityDirect={setQuantityDirect} updateNote={updateNote} 
         calculateTotal={() => cart.reduce((s, i) => s + i.price * i.quantity, 0)} 
+        isLoading={isOrdering} 
       />
       
+      {/* 🔹 OVERLAY LOADING */}
+      {isOrdering && (
+        <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
+            display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column'
+        }}>
+            <div style={{
+                width: 40, height: 40, border: '4px solid #fff', borderTop: '4px solid #F97316', 
+                borderRadius: '50%', animation: 'spin 1s linear infinite'
+            }}></div>
+            <div style={{color: 'white', marginTop: 15, fontWeight: 'bold', fontSize: 16}}>Đang gửi đơn...</div>
+            <style jsx>{`
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            `}</style>
+        </div>
+      )}
+
+      {/* 🔹 POPUP THÀNH CÔNG (Vẫn giữ nguyên để báo cho khách) */}
       {orderSent && (
-          <div className="success-overlay">
+          <div className="success-overlay" style={{zIndex: 9998}}>
               <div className="success-modal">
                   <div className="success-icon-box"><div className="success-icon">✔</div></div>
                   <h3 className="success-title">Đặt món thành công!</h3>
