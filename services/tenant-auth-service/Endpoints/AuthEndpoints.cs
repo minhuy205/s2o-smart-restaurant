@@ -288,7 +288,39 @@ public static class AuthEndpoints
         });
 
         // ==========================================
-        // 4. API LẤY THÔNG TIN 1 QUÁN
+        // 4. API ĐỔI MẬT KHẨU
+        // ==========================================
+        app.MapPost("/api/auth/change-password", async (AuthDbContext db, ChangePasswordRequest request) =>
+        {
+            try
+            {
+                var user = await db.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+                
+                if (user == null)
+                {
+                    return Results.BadRequest(new { success = false, message = "Người dùng không tồn tại" });
+                }
+
+                // Verify mật khẩu cũ
+                if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+                {
+                    return Results.BadRequest(new { success = false, message = "Mật khẩu hiện tại không đúng" });
+                }
+
+                // Cập nhật mật khẩu mới
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+                await db.SaveChangesAsync();
+
+                return Results.Ok(new { success = true, message = "Đổi mật khẩu thành công" });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem($"Lỗi: {ex.Message}");
+            }
+        });
+
+        // ==========================================
+        // 5. API LẤY THÔNG TIN 1 QUÁN
         // ==========================================
         app.MapGet("/api/tenants/{id:int}", async (AuthDbContext db, int id) =>
         {

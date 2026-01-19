@@ -16,6 +16,19 @@ export default function SettingsPage() {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  const [systemName, setSystemName] = useState("S2O Smart Restaurant")
+  const [supportEmail, setSupportEmail] = useState("support@s2o.com")
+  const [hotline, setHotline] = useState("1900-1234")
+
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+
+  const [savingSystem, setSavingSystem] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [message, setMessage] = useState("")
+  const [messageType, setMessageType] = useState("info")
+
   useEffect(() => {
     if (typeof window === "undefined") return
     const token = localStorage.getItem("s2o_token")
@@ -25,7 +38,8 @@ export default function SettingsPage() {
       return
     }
     try {
-      setUser(JSON.parse(userData))
+      const parsed = JSON.parse(userData)
+      setUser(parsed)
     } catch (err) {
       console.error("Lỗi parse user data", err)
       router.push("/login")
@@ -33,6 +47,94 @@ export default function SettingsPage() {
     }
     setIsLoading(false)
   }, [router])
+
+  const showMessage = (text, type = "info") => {
+    setMessage(text)
+    setMessageType(type)
+    setTimeout(() => setMessage(""), 3000)
+  }
+
+  const saveSystemSettings = async () => {
+    try {
+      setSavingSystem(true)
+      // TODO: gọi API thực tế nếu có
+      await new Promise((res) => setTimeout(res, 500))
+      showMessage("Đã lưu cài đặt hệ thống", "success")
+    } catch (err) {
+      showMessage("Lưu cài đặt thất bại", "error")
+    } finally {
+      setSavingSystem(false)
+    }
+  }
+
+  const changePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      showMessage("Vui lòng nhập đủ các trường", "error")
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      showMessage("Mật khẩu mới không khớp", "error")
+      return
+    }
+    if (newPassword.length < 6) {
+      showMessage("Mật khẩu mới phải có ít nhất 6 ký tự", "error")
+      return
+    }
+    try {
+      setSavingPassword(true)
+      const token = localStorage.getItem("s2o_token")
+      
+      // Verify mật khẩu cũ bằng cách thử login lại
+      const loginRes = await fetch("http://localhost:7001/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user.username, password: currentPassword }),
+      })
+      
+      if (!loginRes.ok) {
+        showMessage("Mật khẩu hiện tại không đúng", "error")
+        setSavingPassword(false)
+        return
+      }
+      
+      // Gọi API update password
+      const updateRes = await fetch("http://localhost:7001/api/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          username: user.username,
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        }),
+      })
+      
+      if (!updateRes.ok) {
+        const errorData = await updateRes.text()
+        showMessage("Cập nhật mật khẩu thất bại: " + errorData, "error")
+        setSavingPassword(false)
+        return
+      }
+      
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      showMessage("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.", "success")
+      
+      // Đăng xuất sau 2 giây để user đăng nhập lại với mật khẩu mới
+      setTimeout(() => {
+        localStorage.removeItem("s2o_token")
+        localStorage.removeItem("s2o_user")
+        router.push("/login")
+      }, 2000)
+    } catch (err) {
+      showMessage("Đổi mật khẩu thất bại: " + (err.message || "Lỗi không xác định"), "error")
+    } finally {
+      setSavingPassword(false)
+    }
+  }
 
   const handleLogout = () => {
     if (confirm("Bạn có chắc muốn đăng xuất?")) {
@@ -87,38 +189,115 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {message && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 12,
+              borderRadius: 10,
+              border: messageType === "success" ? "1px solid #16a34a" : "1px solid #f59e0b",
+              background: messageType === "success" ? "#ecfdf3" : "#fff7ed",
+              color: messageType === "success" ? "#166534" : "#92400e",
+              fontWeight: 600,
+            }}
+          >
+            {message}
+          </div>
+        )}
+
         <div className="dashboard-card">
           <h3>Thông tin hệ thống</h3>
           <div className="dashboard-form-group">
             <label className="dashboard-form-label">Tên hệ thống</label>
-            <input type="text" className="dashboard-form-input" defaultValue="S2O Smart Restaurant" />
+            <input
+              type="text"
+              className="dashboard-form-input"
+              value={systemName}
+              onChange={(e) => setSystemName(e.target.value)}
+            />
           </div>
           <div className="dashboard-form-group">
             <label className="dashboard-form-label">Email hỗ trợ</label>
-            <input type="email" className="dashboard-form-input" defaultValue="support@s2o.com" />
+            <input
+              type="email"
+              className="dashboard-form-input"
+              value={supportEmail}
+              onChange={(e) => setSupportEmail(e.target.value)}
+            />
           </div>
           <div className="dashboard-form-group">
             <label className="dashboard-form-label">Hotline</label>
-            <input type="tel" className="dashboard-form-input" defaultValue="1900-1234" />
+            <input
+              type="tel"
+              className="dashboard-form-input"
+              value={hotline}
+              onChange={(e) => setHotline(e.target.value)}
+            />
           </div>
-          <button className="dashboard-btn dashboard-btn-primary">Lưu thay đổi</button>
+          <button
+            className="dashboard-btn dashboard-btn-primary"
+            onClick={saveSystemSettings}
+            disabled={savingSystem}
+          >
+            {savingSystem ? "Đang lưu..." : "Lưu thay đổi"}
+          </button>
         </div>
 
         <div className="dashboard-card" style={{ marginTop: 24 }}>
-          <h3>Cài đặt tài khoản</h3>
-          <div className="dashboard-form-group">
-            <label className="dashboard-form-label">Họ và tên</label>
-            <input type="text" className="dashboard-form-input" defaultValue={user?.fullName || user?.username} />
+          <h3>Đổi mật khẩu</h3>
+          <div style={{ marginBottom: 20, padding: 16, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+            <p style={{ margin: 0, fontSize: 14, color: "#4b5563" }}>
+              <strong>Tài khoản:</strong> {user?.username}
+            </p>
+            <p style={{ margin: "8px 0 0", fontSize: 14, color: "#4b5563" }}>
+              <strong>Họ tên:</strong> {user?.fullName || "Chưa cập nhật"}
+            </p>
+            {user?.tenantName && (
+              <p style={{ margin: "8px 0 0", fontSize: 14, color: "#4b5563" }}>
+                <strong>Nhà hàng:</strong> {user?.tenantName}
+              </p>
+            )}
+            <p style={{ margin: "8px 0 0", fontSize: 14, color: "#4b5563" }}>
+              <strong>Vai trò:</strong> {user?.role}
+            </p>
           </div>
           <div className="dashboard-form-group">
-            <label className="dashboard-form-label">Email</label>
-            <input type="email" className="dashboard-form-input" defaultValue={user?.email || ""} />
+            <label className="dashboard-form-label">Mật khẩu hiện tại</label>
+            <input
+              type="password"
+              className="dashboard-form-input"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Nhập mật khẩu hiện tại"
+            />
           </div>
           <div className="dashboard-form-group">
             <label className="dashboard-form-label">Mật khẩu mới</label>
-            <input type="password" className="dashboard-form-input" placeholder="Nhập mật khẩu mới" />
+            <input
+              type="password"
+              className="dashboard-form-input"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Nhập mật khẩu mới"
+            />
           </div>
-          <button className="dashboard-btn dashboard-btn-primary">Cập nhật tài khoản</button>
+          <div className="dashboard-form-group">
+            <label className="dashboard-form-label">Xác nhận mật khẩu mới</label>
+            <input
+              type="password"
+              className="dashboard-form-input"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Nhập lại mật khẩu mới"
+            />
+          </div>
+          <button
+            className="dashboard-btn dashboard-btn-primary"
+            onClick={changePassword}
+            disabled={savingPassword}
+          >
+            {savingPassword ? "Đang cập nhật..." : "Đổi mật khẩu"}
+          </button>
         </div>
       </div>
     </div>
