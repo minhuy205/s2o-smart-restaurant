@@ -172,18 +172,44 @@ export default function MenuManagement() {
   const removeFromCart = (cartId) => setCart(prev => prev.filter(item => item.cartId !== cartId));
   const calculateTotal = () => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
+  // --- [FIXED] HANDLE CREATE ORDER ---
   const handleCreateOrder = async () => {
     if (cart.length === 0) return alert("Giỏ hàng trống!");
+    
+    // [SỬA ĐỔI]: Thêm tableId và deviceToken vào payload
     const payload = {
-      tableName: tableName, totalAmount: calculateTotal(), status: "Pending", tenantId: currentUser?.tenantId,
-      items: cart.map(i => ({ menuItemName: i.name, price: i.price, quantity: i.quantity, note: i.note || "" }))
+      tableName: tableName, 
+      tableId: tableId ? parseInt(tableId) : 0, // Quan trọng: Gửi ID bàn nếu có
+      totalAmount: calculateTotal(), 
+      status: "Pending", 
+      tenantId: currentUser?.tenantId,
+      deviceToken: "", // Token thiết bị (để trống vì admin đặt)
+      items: cart.map(i => ({ 
+          menuItemName: i.name, 
+          price: i.price, 
+          quantity: i.quantity, 
+          note: i.note || "" 
+      }))
     };
+
     const res = await fetchAPI(SERVICES.ORDER, '/api/orders', { method: 'POST', body: JSON.stringify(payload) });
-    if (res && res.id) {
-        if (tableId) await fetchAPI(SERVICES.MENU, `/api/tables/${tableId}/status`, { method: 'PUT', body: JSON.stringify({ status: 'Occupied', currentOrderId: res.id }) });
+    
+    // [SỬA ĐỔI]: Kiểm tra res.orderId thay vì res.id
+    if (res && res.orderId) {
+        if (tableId) {
+            // Cập nhật trạng thái bàn là "Occupied"
+            await fetchAPI(SERVICES.MENU, `/api/tables/${tableId}/status`, { 
+                method: 'PUT', 
+                body: JSON.stringify({ status: 'Occupied', currentOrderId: res.orderId }) 
+            });
+        }
         alert("✅ Đã gửi đơn xuống bếp!");
-        setCart([]); setTableName('Khách lẻ');
+        setCart([]); 
+        setTableName('Khách lẻ');
         if (tableId) router.push('/tables');
+    } else {
+        console.error("Lỗi đặt món:", res);
+        alert("❌ Đặt món thất bại! Vui lòng thử lại.");
     }
   };
 
@@ -217,7 +243,7 @@ export default function MenuManagement() {
             <button onClick={() => setShowForm(true)} className={styles.btnAdd}><span>+ Thêm Món Mới</span></button>
         </div>
 
-        {/* --- FILTER BAR (Đã thêm mục Khác) --- */}
+        {/* --- FILTER BAR --- */}
         <div className={styles.filterContainer}>
           <input className={styles.inputSearch} placeholder="🔍 Tìm kiếm..." value={filters.keyword} onChange={(e) => setFilters({...filters, keyword: e.target.value})} />
           
@@ -227,7 +253,7 @@ export default function MenuManagement() {
             <option value="2">Món khô</option>
             <option value="3">Đồ uống</option>
             <option value="4">Tráng miệng</option>
-            <option value="5">Khác</option> {/* <-- Đã bổ sung */}
+            <option value="5">Khác</option>
           </select>
 
           <select className={styles.selectFilter} value={filters.status} onChange={(e) => setFilters({...filters, status: e.target.value})}>
@@ -301,7 +327,7 @@ export default function MenuManagement() {
          </div>
       </div>
 
-      {/* MODAL FORM THÊM/SỬA MÓN (Quản lý) */}
+      {/* MODAL FORM THÊM/SỬA MÓN */}
       {showForm && (
         <div className={styles.modalOverlay} onClick={handleCancel}>
             <div className={styles.formModal} onClick={(e) => e.stopPropagation()}>
@@ -325,7 +351,7 @@ export default function MenuManagement() {
                             <option value="2">Món khô</option>
                             <option value="3">Đồ uống</option>
                             <option value="4">Tráng miệng</option>
-                            <option value="5">Khác</option> {/* <-- Đã bổ sung */}
+                            <option value="5">Khác</option>
                         </select>
                     </div>
                 </div>

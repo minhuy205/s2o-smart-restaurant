@@ -1,0 +1,205 @@
+.chatContainer {
+  position: fixed;
+  /* SỬA DÒNG NÀY: Tăng từ 20px lên 100px (hoặc 120px) để né giỏ hàng */
+  bottom: 110px; 
+  right: 20px;
+  z-index: 1000;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ... Các phần dưới giữ nguyên ... */
+
+/* Nút tròn nổi (Floating Button) */
+.fab {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #ff6b00;
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  transition: transform 0.2s;
+}
+
+.fab:hover {
+  transform: scale(1.1);
+}
+
+/* Khung chat chính */
+.chatWindow {
+  position: absolute;
+  /* Chat window sẽ tự động neo theo nút chat, không cần sửa bottom ở đây */
+  bottom: 70px; 
+  right: 0;
+  width: 350px;
+  height: 500px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+/* ... (Copy tiếp phần còn lại của file CSS cũ vào đây nếu cần, hoặc chỉ cần sửa đoạn trên) ... */
+
+.header {
+  background: #ff6b00;
+  color: white;
+  padding: 15px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.messages {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+  background: #f9f9f9;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.message {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.user {
+  align-self: flex-end;
+  background: #007bff;
+  color: white;
+  border-bottom-right-radius: 2px;
+}
+
+.bot {
+  align-self: flex-start;
+  background: #e9ecef;
+  color: #333;
+  border-bottom-left-radius: 2px;
+}
+
+.orderCard {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.orderInfo {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #555;
+}
+
+.confirmBtn {
+  width: 100%;
+  padding: 8px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.confirmBtn:hover {
+  background: #218838;
+}
+
+.inputArea {
+  padding: 10px;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 10px;
+  background: white;
+}
+
+.input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  outline: none;
+}
+
+.sendBtn {
+  background: #ff6b00;
+  color: white;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Gợi ý tin nhắn */
+.suggestionContainer {
+  display: flex;
+  gap: 8px;
+  padding: 8px 15px;
+  background-color: #fff;
+  border-top: 1px solid #f5f5f5;
+  overflow-x: auto;
+  white-space: nowrap;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.suggestionContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.suggestionChip {
+  background-color: #fff;
+  border: 1px solid #ff6b00;
+  color: #ff6b00;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.suggestionChip:hover {
+  background-color: #ff6b00;
+  color: white;
+}
+
+.suggestionChip:active {
+  transform: scale(0.95);
+}

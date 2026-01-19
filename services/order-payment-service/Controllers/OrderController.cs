@@ -46,16 +46,16 @@ namespace OrderPaymentService.Controllers
                 .ToListAsync();
         }
 
-        // 2. POST: Tạo đơn hàng (Dùng DTO để nhận Token chuẩn xác + Fix giờ VN)
+        // 2. POST: Tạo đơn hàng
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto request)
         {
-            // Debug log để kiểm tra token
-            Console.WriteLine($"[API] 📩 Nhận đơn bàn: {request.TableName} | Token: {request.DeviceToken}");
+            // Debug log
+            Console.WriteLine($"[API] 📩 Nhận đơn bàn: {request.TableName} | Tenant: {request.TenantId}");
 
             if (request.TenantId <= 0) return BadRequest("Invalid TenantId");
 
-            // A. Map từ DTO sang Model Order (Thủ công để kiểm soát dữ liệu)
+            // A. Chuẩn bị dữ liệu Order
             var newOrder = new Order
             {
                 TenantId = request.TenantId,
@@ -64,10 +64,10 @@ namespace OrderPaymentService.Controllers
                 TotalAmount = request.TotalAmount,
                 Status = "Pending",
                 
-                // 🔥 SỬA LỖI GIỜ: Cộng thêm 7 tiếng để ra giờ Việt Nam
+                // Giờ Việt Nam (UTC + 7)
                 CreatedAt = DateTime.UtcNow, 
                 
-                // Gán Token từ request vào Order để lưu DB
+                // Lưu Token để dùng sau này (báo món xong)
                 DeviceToken = request.DeviceToken, 
 
                 Items = new List<OrderItem>()
@@ -87,48 +87,53 @@ namespace OrderPaymentService.Controllers
                 }
             }
 
-            // B. Lưu vào Database
+            // B. Lưu vào Database (BẮT BUỘC PHẢI ĐỢI XONG)
             try 
             {
                 _context.Orders.Add(newOrder);
                 await _context.SaveChangesAsync();
-                
-                // C. Gửi thông báo xác nhận ngay (Test luôn xem Token sống không)
-                if (!string.IsNullOrEmpty(newOrder.DeviceToken))
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Lỗi Database");
+                return StatusCode(500, "Lỗi lưu đơn hàng: " + ex.Message);
+            }
+
+            // --- PHẦN CHẠY NGẦM (FIRE AND FORGET) ĐỂ TRÁNH LAG ---
+
+            // C. Gửi thông báo Firebase (Chạy ngầm)
+            if (!string.IsNullOrEmpty(newOrder.DeviceToken))
+            {
+                _ = _notificationService.SendNotificationAsync(
+                    newOrder.DeviceToken, 
+                    "Đã nhận đơn! 👨‍🍳", 
+                    $"Bếp đang chuẩn bị {newOrder.Items.Count} món cho bạn."
+                );
+            }
+
+            // D. Gửi sự kiện RabbitMQ (Chạy ngầm luôn cho chắc ăn)
+            // Dùng Task.Run để đẩy ra luồng riêng, không làm chậm API
+            _ = Task.Run(async () => 
+            {
+                try 
                 {
-                   _ = _notificationService.SendNotificationAsync(
-                        newOrder.DeviceToken, 
-                        "Đã nhận đơn! 👨‍🍳", 
-                        $"Bếp đang chuẩn bị {newOrder.Items.Count} món cho bạn."
-                    );
+                    await _publishEndpoint.Publish(new OrderCreatedEvent
+                    {
+                        OrderId = newOrder.Id,
+                        TenantId = newOrder.TenantId,
+                        TableId = newOrder.TableId,
+                        TotalAmount = newOrder.TotalAmount,
+                        CreatedAt = newOrder.CreatedAt, 
+                        Status = newOrder.Status
+                    });
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Lỗi lưu đơn hàng vào Database");
-                return StatusCode(500, "Lỗi Database: " + ex.Message);
-            }
-
-            // D. Gửi sự kiện sang RabbitMQ (để các service khác biết)
-            try
-            {
-                await _publishEndpoint.Publish(new OrderCreatedEvent
+                catch (Exception ex)
                 {
-                    OrderId = newOrder.Id,
-                    TenantId = newOrder.TenantId,
-                    TableId = newOrder.TableId,
-                    TotalAmount = newOrder.TotalAmount,
-                    // Giờ này đã là giờ VN do đã gán ở trên
-                    CreatedAt = newOrder.CreatedAt, 
-                    Status = newOrder.Status
-                });
-            }
-            catch (Exception ex)
-            {
-                // Chỉ ghi log warning màu vàng, vẫn cho khách đặt món thành công
-                _logger.LogWarning("⚠️ Lỗi gửi RabbitMQ (vẫn cho qua): " + ex.Message);
-            }
+                    _logger.LogWarning($"⚠️ Lỗi gửi RabbitMQ (Order {newOrder.Id}): {ex.Message}");
+                }
+            });
 
+            // E. Trả về kết quả ngay lập tức
             return Ok(new { message = "Đặt món thành công", orderId = newOrder.Id });
         }
 
@@ -144,12 +149,12 @@ namespace OrderPaymentService.Controllers
             order.Status = status;
             await _context.SaveChangesAsync();
 
-            // LOGIC FIREBASE: Nếu trạng thái là "Completed" -> Bắn thông báo
+            // LOGIC FIREBASE: Nếu xong món -> Bắn thông báo (Chạy ngầm)
             if (status == "Completed" && !string.IsNullOrEmpty(order.DeviceToken))
             {
                 string firstItemName = order.Items.FirstOrDefault()?.MenuItemName ?? "món ăn";
                 
-                // Gọi service bắn tin (Fire & Forget)
+                // Fire & Forget
                 _ = _notificationService.SendOrderCompletedAsync(order.DeviceToken, order.Id, firstItemName);
             }
 
@@ -157,18 +162,14 @@ namespace OrderPaymentService.Controllers
         }
     }
 
-    // --- CÁC CLASS DTO (Data Transfer Object) ---
-    // Dùng để hứng dữ liệu JSON chính xác từ Frontend
+    // --- DTO CLASSES ---
     public class CreateOrderDto
     {
         public int TenantId { get; set; }
         public int TableId { get; set; }
         public string TableName { get; set; }
         public decimal TotalAmount { get; set; }
-        
-        // Đây là biến quan trọng nhất để hứng token
         public string DeviceToken { get; set; } 
-
         public List<OrderItemDto> Items { get; set; }
     }
 

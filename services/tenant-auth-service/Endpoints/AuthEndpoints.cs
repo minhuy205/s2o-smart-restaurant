@@ -120,7 +120,6 @@
 //         return tokenHandler.WriteToken(token);
 //     }
 // }
-
 using BCrypt.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -137,26 +136,37 @@ public static class AuthEndpoints
 {
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        // --- 1. API ĐĂNG KÝ (Cho chủ quán) ---
+        // ==========================================
+        // 1. API ĐĂNG KÝ (GIỮ NGUYÊN)
+        // ==========================================
         app.MapPost("/api/auth/register", async (AuthDbContext db, RegisterRequest request) =>
         {
             if (await db.Users.AnyAsync(u => u.Username == request.Username))
             {
-                return Results.BadRequest(new { message = "Tài khoản đã tồn tại!" });
+                return Results.BadRequest(new { success = false, message = "Tài khoản đã tồn tại!" });
             }
 
-            // A. Tạo Quán
-            var newTenant = new Tenant
-            {
-                Name = request.RestaurantName,
-                Address = request.Address,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            db.Tenants.Add(newTenant);
-            await db.SaveChangesAsync(); 
+            int? newTenantId = null;
 
-            // B. Tạo Owner
+            // Logic cho Chủ Quán
+            if (request.Role == "Owner")
+            {
+                if (string.IsNullOrEmpty(request.RestaurantName))
+                    return Results.BadRequest(new { success = false, message = "Thiếu tên quán" });
+
+                var newTenant = new Tenant
+                {
+                    Name = request.RestaurantName,
+                    Address = request.Address,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                db.Tenants.Add(newTenant);
+                await db.SaveChangesAsync();
+                newTenantId = newTenant.Id;
+            }
+
+            // Tạo User
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
             var newUser = new User
             {
@@ -164,147 +174,146 @@ public static class AuthEndpoints
                 PasswordHash = passwordHash,
                 FullName = request.FullName,
                 PhoneNumber = request.PhoneNumber,
-                Role = "Owner",
-                TenantId = newTenant.Id,
+                Role = request.Role ?? "Customer",
+                TenantId = newTenantId,
                 Points = 0,
                 CreatedAt = DateTime.UtcNow
             };
             db.Users.Add(newUser);
             await db.SaveChangesAsync();
 
-            return Results.Ok(new { message = "Đăng ký thành công!" });
+            return Results.Ok(new { success = true, message = "Đăng ký thành công!" });
         });
 
-        // --- 2. API ĐĂNG NHẬP (Web Quản lý) ---
+        // ==========================================
+        // 2. API ĐĂNG NHẬP (ĐÃ SỬA: PHỤC VỤ CẢ WEB VÀ MOBILE)
+        // ==========================================
         app.MapPost("/api/auth/login", async (AuthDbContext db, IConfiguration config, LoginRequest request) =>
         {
             var user = await db.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
             
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
-                return Results.Unauthorized();
+                return Results.BadRequest(new { success = false, message = "Sai tài khoản hoặc mật khẩu" });
             }
 
+            // A. Lấy Tên Quán (Cho Web Admin hiển thị)
             string tenantName = "Chưa cập nhật";
             if (user.TenantId != null)
             {
                 var tenant = await db.Tenants.FindAsync(user.TenantId);
                 tenantName = tenant?.Name ?? "Không xác định";
             }
+            else if (user.Role == "Admin")
+            {
+                tenantName = "Hệ thống Quản trị S2O";
+            }
+
+            // B. Lấy Danh sách Quán (Cho Mobile App hiển thị trang chủ)
+            // LƯU Ý: Phải viết thường (id, name...) để khớp với React Native
+            var tenantsList = await db.Tenants
+                .Where(t => t.IsActive)
+                .Select(t => new { 
+                    id = t.Id,       // <-- Quan trọng: chữ thường
+                    name = t.Name, 
+                    address = t.Address, 
+                    logoUrl = t.LogoUrl 
+                })
+                .ToListAsync();
 
             var token = GenerateJwtToken(user, config);
 
-            return Results.Ok(new AuthResponse 
+            // C. Trả về cục dữ liệu to (Gộp cả Web và Mobile)
+            return Results.Ok(new 
             { 
-                Token = token, 
-                Username = user.Username, 
-                Role = user.Role,
-                FullName = user.FullName ?? user.Username,
-                TenantId = user.TenantId,
-                TenantName = tenantName
+                success = true,
+                token = token,
+                
+                // Dữ liệu User cơ bản
+                user = new {
+                    id = user.Id,
+                    username = user.Username,
+                    fullName = user.FullName ?? user.Username,
+                    role = user.Role,
+                    tenantId = user.TenantId
+                },
+
+                // Dành cho Mobile App (cần list quán)
+                tenants = tenantsList,
+
+                // Dành cho Web Admin (cần thông tin phẳng ở ngoài)
+                role = user.Role,
+                tenantId = user.TenantId,
+                tenantName = tenantName,
+                username = user.Username,
+                fullName = user.FullName ?? user.Username
             });
         });
 
-        // --- 3. API GOOGLE SYNC (Cho Mobile App) --- 
-        // 👇 ĐÂY LÀ ĐOẠN QUAN TRỌNG BẠN ĐANG THIẾU
+        // ==========================================
+        // 3. API GOOGLE SYNC (ĐÃ SỬA: CHỮ THƯỜNG CHO MOBILE)
+        // ==========================================
         app.MapPost("/api/auth/google-sync", async (AuthDbContext db, GoogleAuthRequest request) =>
         {
             try 
             {
-                // A. Kiểm tra User đã có chưa?
                 var user = await db.Users.FirstOrDefaultAsync(u => u.Username == request.Email);
                 int userId;
 
-                if (user != null)
-                {
-                    userId = user.Id;
-                }
+                if (user != null) userId = user.Id;
                 else
                 {
-                    // Chưa có -> Tạo mới (Role Customer)
-                    var newUser = new User
-                    {
-                        Username = request.Email,
-                        PasswordHash = "google_auth",
-                        FullName = request.FullName,
-                        Role = "Customer",
-                        CreatedAt = DateTime.UtcNow,
-                        Points = 0
-                    };
+                    var newUser = new User { Username = request.Email, PasswordHash = "google_auth", FullName = request.FullName, Role = "Customer", CreatedAt = DateTime.UtcNow };
                     db.Users.Add(newUser);
                     await db.SaveChangesAsync();
                     userId = newUser.Id;
                 }
 
-                // B. Lấy danh sách Nhà hàng (để hiện trang chủ App)
-                var tenants = await db.Tenants
-                    .Where(t => t.IsActive)
+                // Mobile cần danh sách này
+                var tenants = await db.Tenants.Where(t => t.IsActive)
                     .Select(t => new { 
-                        Id = t.Id, 
-                        Name = t.Name, 
-                        Address = t.Address, 
-                        LogoUrl = t.LogoUrl 
-                    })
-                    .ToListAsync();
+                        id = t.Id,        // <-- Quan trọng: chữ thường
+                        name = t.Name, 
+                        address = t.Address, 
+                        logoUrl = t.LogoUrl 
+                    }).ToListAsync();
 
-                // C. Trả về đúng định dạng App cần
-                return Results.Ok(new 
-                {
+                return Results.Ok(new {
                     success = true,
                     user = new { id = userId, email = request.Email, name = request.FullName, role = "Customer" },
                     tenants = tenants
                 });
             }
-            catch (Exception ex)
-            {
-                return Results.Problem(ex.Message);
-            }
+            catch (Exception ex) { return Results.Problem(ex.Message); }
         });
 
-        // --- 4. API LẤY THÔNG TIN QUÁN ---
+        // ==========================================
+        // 4. API LẤY THÔNG TIN 1 QUÁN
+        // ==========================================
         app.MapGet("/api/tenants/{id:int}", async (AuthDbContext db, int id) =>
         {
             var tenant = await db.Tenants.FindAsync(id);
             if (tenant == null) return Results.NotFound();
+            // Trả về chữ thường cho Mobile dễ đọc
             return Results.Ok(new { id = tenant.Id, name = tenant.Name, address = tenant.Address, logoUrl = tenant.LogoUrl });
         });
 
-        // --- 5. API ADMIN - LẤY DANH SÁCH TẤT CẢ CÁC NHÀ HÀNG ---
+        // ==========================================
+        // 5. API ADMIN - DANH SÁCH NHÀ HÀNG (GIỮ NGUYÊN)
+        // ==========================================
         app.MapGet("/api/admin/tenants", async (AuthDbContext db, HttpContext context, int? limit) =>
         {
             try 
             {
-                // Kiểm tra token
-                var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-                if (string.IsNullOrEmpty(token))
-                {
-                    return Results.Unauthorized();
-                }
+                if (!CheckAdminRole(context)) return Results.Json(new { message = "Forbidden" }, statusCode: 403);
 
-                // Parse token để lấy role
-                var handler = new JwtSecurityTokenHandler();
-                var jwtToken = handler.ReadJwtToken(token);
-                
-                // Try both claim type variations
-                var role = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value 
-                    ?? jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
-
-                Console.WriteLine($"[ADMIN TENANTS] Token Role Claim: {role ?? "NULL"}");
-                Console.WriteLine($"[ADMIN TENANTS] All Claims: {string.Join(", ", jwtToken.Claims.Select(c => $"{c.Type}={c.Value}"))}");
-
-                if (string.IsNullOrEmpty(role) || role != "Admin")
-                {
-                    return Results.Json(new { message = "Chỉ Admin mới có quyền truy cập" }, statusCode: 403);
-                }
-
-                // Lấy danh sách nhà hàng với thông tin owner từ bảng Users
                 var query = from t in db.Tenants
                             join u in db.Users on t.Id equals u.TenantId into users
                             from owner in users.Where(u => u.Role == "Owner").DefaultIfEmpty()
                             orderby t.CreatedAt descending
                             select new 
                             {
-                                id = t.Id,
+                                id = t.Id, // Chữ thường cũng tốt cho Web JS
                                 name = t.Name,
                                 address = t.Address,
                                 phoneNumber = owner != null ? owner.PhoneNumber : t.PhoneNumber,
@@ -314,50 +323,22 @@ public static class AuthEndpoints
                                 createdAt = t.CreatedAt
                             };
 
-                var tenants = limit.HasValue && limit.Value > 0
-                    ? await query.Take(limit.Value).ToListAsync()
-                    : await query.ToListAsync();
-
-                Console.WriteLine($"[ADMIN TENANTS] Returned {tenants.Count} tenants");
+                var tenants = limit.HasValue && limit.Value > 0 ? await query.Take(limit.Value).ToListAsync() : await query.ToListAsync();
                 return Results.Ok(tenants);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ERROR] /api/admin/tenants: {ex.Message}");
-                return Results.Problem($"Lỗi: {ex.Message}");
-            }
+            catch (Exception ex) { return Results.Problem($"Lỗi: {ex.Message}"); }
         });
 
-        // --- 6. API ADMIN - LẤY DANH SÁCH KHÁCH HÀNG ---
+        // ==========================================
+        // 6. API ADMIN - DANH SÁCH KHÁCH HÀNG (GIỮ NGUYÊN)
+        // ==========================================
         app.MapGet("/api/admin/customers", async (AuthDbContext db, HttpContext context, int? limit) =>
         {
             try 
             {
-                // Kiểm tra token
-                var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-                if (string.IsNullOrEmpty(token))
-                {
-                    return Results.Unauthorized();
-                }
+                if (!CheckAdminRole(context)) return Results.Json(new { message = "Forbidden" }, statusCode: 403);
 
-                // Parse token để lấy role
-                var handler = new JwtSecurityTokenHandler();
-                var jwtToken = handler.ReadJwtToken(token);
-                
-                var role = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value 
-                    ?? jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
-
-                Console.WriteLine($"[ADMIN CUSTOMERS] Token Role Claim: {role ?? "NULL"}");
-
-                if (string.IsNullOrEmpty(role) || role != "Admin")
-                {
-                    return Results.Json(new { message = "Chỉ Admin mới có quyền truy cập" }, statusCode: 403);
-                }
-
-                // Lấy danh sách khách hàng (tất cả users trừ Admin)
-                var query = db.Users
-                    .Where(u => u.Role != "Admin")
-                    .OrderByDescending(u => u.CreatedAt)
+                var query = db.Users.Where(u => u.Role != "Admin").OrderByDescending(u => u.CreatedAt)
                     .Select(u => new 
                     {
                         id = u.Id,
@@ -369,21 +350,14 @@ public static class AuthEndpoints
                         createdAt = u.CreatedAt
                     });
 
-                var customers = limit.HasValue && limit.Value > 0
-                    ? await query.Take(limit.Value).ToListAsync()
-                    : await query.ToListAsync();
-
-                Console.WriteLine($"[ADMIN CUSTOMERS] Returned {customers.Count} customers");
+                var customers = limit.HasValue && limit.Value > 0 ? await query.Take(limit.Value).ToListAsync() : await query.ToListAsync();
                 return Results.Ok(customers);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ERROR] /api/admin/customers: {ex.Message}");
-                return Results.Problem($"Lỗi: {ex.Message}");
-            }
+            catch (Exception ex) { return Results.Problem($"Lỗi: {ex.Message}"); }
         });
     }
 
+    // --- HÀM HỖ TRỢ ---
     private static string GenerateJwtToken(User user, IConfiguration config)
     {
         var key = Encoding.ASCII.GetBytes(config["Jwt:Key"] ?? "SecretKeyRatDaiCanPhaiBaoMat123456");
@@ -403,9 +377,18 @@ public static class AuthEndpoints
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
     }
+
+    private static bool CheckAdminRole(HttpContext context)
+    {
+        var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+        if (string.IsNullOrEmpty(token)) return false;
+        var handler = new JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(token);
+        var role = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value ?? jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
+        return role == "Admin";
+    }
 }
 
-// 👇 Thêm class này ở cuối file nếu bạn chưa có trong thư mục DTOs
 public class GoogleAuthRequest
 {
     public string Email { get; set; }

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 
 const CartFooter = ({ 
     cart, isCartOpen, setIsCartOpen, handlePlaceOrder, 
-    updateQuantity, setQuantityDirect, updateNote, calculateTotal 
+    updateQuantity, setQuantityDirect, updateNote, calculateTotal,
+    isLoading // 👇 Nhận thêm prop này từ cha để biết đang gửi đơn
 }) => {
     
     // State cục bộ để tránh giật lag khi nhập liệu
@@ -41,11 +42,11 @@ const CartFooter = ({
 
     return (
         <>
-            <div className="cart-backdrop" onClick={() => setIsCartOpen(false)}></div>
+            <div className="cart-backdrop" onClick={() => !isLoading && setIsCartOpen(false)}></div>
             <div className="cart-sheet">
                 <div className="cart-header">
                     <h3 className="cart-title">Giỏ hàng ({cart.length})</h3>
-                    <button className="btn-close-cart" onClick={() => setIsCartOpen(false)}>✕</button>
+                    <button className="btn-close-cart" onClick={() => setIsCartOpen(false)} disabled={isLoading}>✕</button>
                 </div>
 
                 <div className="cart-items-list">
@@ -57,24 +58,26 @@ const CartFooter = ({
                                     <div style={{fontWeight:700, color:'#F97316'}}>{(item.price * item.quantity).toLocaleString()} đ</div>
                                 </div>
                                 <div className="qty-control">
-                                    <button className="btn-qty" onClick={() => updateQuantity(item.cartId, -1)}>-</button>
+                                    <button className="btn-qty" onClick={() => updateQuantity(item.cartId, -1)} disabled={isLoading}>-</button>
                                     
                                     {/* ✅ INPUT SỐ LƯỢNG */}
                                     <input 
                                         className="qty-input-cart"
                                         type="number"
+                                        disabled={isLoading}
                                         value={localQuantities[item.cartId] !== undefined ? localQuantities[item.cartId] : item.quantity}
                                         onChange={(e) => handleInputChange(item.cartId, e.target.value)}
                                         onBlur={() => handleInputBlur(item.cartId)}
                                     />
 
-                                    <button className="btn-qty" onClick={() => updateQuantity(item.cartId, 1)}>+</button>
+                                    <button className="btn-qty" onClick={() => updateQuantity(item.cartId, 1)} disabled={isLoading}>+</button>
                                 </div>
                             </div>
                             <input 
                                 className="cart-note-input"
                                 placeholder="✍️ Ghi chú..."
                                 value={item.note || ''}
+                                disabled={isLoading}
                                 onChange={(e) => updateNote(item.cartId, e.target.value)}
                             />
                         </div>
@@ -86,7 +89,19 @@ const CartFooter = ({
                         <div style={{fontSize:13, color:'#6B7280'}}>Tổng cộng</div>
                         <div style={{fontSize:22, fontWeight:800, color:'#111827'}}>{calculateTotal().toLocaleString()} đ</div>
                     </div>
-                    <button className="btn-checkout" onClick={handlePlaceOrder}>Đặt Đơn</button>
+                    
+                    {/* 👇 Nút Đặt Đơn: Sẽ bị mờ và không bấm được khi isLoading = true */}
+                    <button 
+                        className="btn-checkout" 
+                        onClick={handlePlaceOrder}
+                        disabled={isLoading} 
+                        style={{
+                            opacity: isLoading ? 0.7 : 1, 
+                            cursor: isLoading ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        {isLoading ? 'Đang gửi...' : 'Đặt Đơn'}
+                    </button>
                 </div>
             </div>
         </>

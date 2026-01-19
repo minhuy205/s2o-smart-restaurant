@@ -5,8 +5,7 @@ import { Platform } from 'react-native';
 // 👇 1. BƯỚC QUAN TRỌNG NHẤT: ĐIỀN IP MÁY TÍNH CỦA BẠN VÀO ĐÂY
 // (Xem bằng lệnh ipconfig như hướng dẫn ở trên)
 // ======================================================================
-const SERVER_IP = '192.168.1.17'; // <--- ⚠️ THAY SỐ NÀY BẰNG IP CỦA BẠN
-
+const SERVER_IP = '192.168.1.12'; // <--- ⚠️ THAY SỐ NÀY BẰNG IP CỦA BẠN
 
 // Logic tự động chọn Host:
 // - Nếu chạy Web: Dùng localhost (cho nhanh)
