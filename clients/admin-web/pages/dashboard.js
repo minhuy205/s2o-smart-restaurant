@@ -3,131 +3,44 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/router"
 
-export default function AdminDashboard() {
+const NAV_ITEMS = [
+  { key: "dashboard", label: "Dashboard", icon: "📊", href: "/dashboard" },
+  { key: "restaurants", label: "Nhà hàng", icon: "🏪", href: "/restaurants" },
+  { key: "customers", label: "Khách hàng", icon: "👥", href: "/customers" },
+  { key: "orders", label: "Đơn hàng", icon: "📋", href: "/orders" },
+  { key: "settings", label: "Cài đặt", icon: "⚙️", href: "/settings" },
+]
+
+export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [activePage, setActivePage] = useState("overview")
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("s2o_token")
-      const userData = localStorage.getItem("s2o_user")
-
-      if (!token || !userData) {
-        router.push("/login")
-      } else {
-        try {
-          setUser(JSON.parse(userData))
-        } catch (e) {
-          console.error("Lỗi parse user data", e)
-          router.push("/login")
-        }
-        setIsLoading(false)
-      }
-    }
-  }, [])
-
-  const handleLogout = () => {
-    if (confirm("Bạn có chắc muốn đăng xuất?")) {
-      localStorage.removeItem("s2o_token")
-      localStorage.removeItem("s2o_user")
-      router.push("/login")
-    }
-  }
-
-  const renderPageContent = () => {
-    switch (activePage) {
-      case "overview":
-        return <OverviewPage user={user} />
-      case "restaurants":
-        return <RestaurantsPage user={user} />
-      case "orders":
-        return <OrdersPage user={user} />
-      case "customers":
-        return <CustomersPage user={user} />
-      case "settings":
-        return <SettingsPage user={user} />
-      default:
-        return <OverviewPage user={user} />
-    }
-  }
-
-  if (isLoading || !user) {
-    return (
-      <div className="dashboard-loading">
-        <div className="dashboard-spinner"></div>
-        <p>Đang tải dữ liệu...</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="dashboard-container">
-      {/* Sidebar */}
-      <div className="dashboard-sidebar">
-        <div className="dashboard-sidebar-header">
-          <h2>S2O Admin</h2>
-        </div>
-        <nav className="dashboard-sidebar-nav">
-          <ul>
-            <li className={activePage === "overview" ? "active" : ""} onClick={() => setActivePage("overview")}>
-              📊 Tổng quan
-            </li>
-            <li className={activePage === "restaurants" ? "active" : ""} onClick={() => setActivePage("restaurants")}>
-              🏪 Quản lý nhà hàng
-            </li>
-            <li className={activePage === "customers" ? "active" : ""} onClick={() => setActivePage("customers")}>
-              👥 Quản lý khách hàng
-            </li>
-            <li className={activePage === "orders" ? "active" : ""} onClick={() => setActivePage("orders")}>
-              📋 Quản lý đơn hàng
-            </li>
-            <li className={activePage === "settings" ? "active" : ""} onClick={() => setActivePage("settings")}>
-              ⚙️ Cài đặt
-            </li>
-          </ul>
-        </nav>
-        <div className="dashboard-sidebar-footer">
-          <button onClick={handleLogout} className="dashboard-logout-btn">
-            Đăng xuất
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="dashboard-main">
-        <div className="dashboard-header">
-          <h1>{getPageTitle(activePage)}</h1>
-          <div className="dashboard-user-info">
-            <div className="dashboard-user-name">{user?.fullName || user?.username}</div>
-            <div className="dashboard-user-role">{user?.role}</div>
-          </div>
-        </div>
-
-        {renderPageContent()}
-      </div>
-    </div>
-  )
-}
-
-function getPageTitle(page) {
-  const titles = {
-    overview: "Tổng Quan",
-    restaurants: "Quản Lý Nhà Hàng",
-    orders: "Quản Lý Đơn Hàng",
-    customers: "Quản Lý Khách Hàng",
-    settings: "Cài Đặt Hệ Thống",
-  }
-  return titles[page] || "Dashboard"
-}
-
-function OverviewPage({ user }) {
+  const [authLoading, setAuthLoading] = useState(true)
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null)
+  const [showContactPanel, setShowContactPanel] = useState(false)
 
   useEffect(() => {
+    if (typeof window === "undefined") return
+    const token = localStorage.getItem("s2o_token")
+    const userData = localStorage.getItem("s2o_user")
+    if (!token || !userData) {
+      router.push("/login")
+      return
+    }
+    try {
+      setUser(JSON.parse(userData))
+    } catch (err) {
+      console.error("Lỗi parse user data", err)
+      router.push("/login")
+      return
+    }
+    setAuthLoading(false)
+  }, [router])
+
+  useEffect(() => {
+    if (!user) return
     let mounted = true
     ;(async () => {
       try {
@@ -141,494 +54,296 @@ function OverviewPage({ user }) {
           },
         })
 
-        console.log("[OverviewPage] API Response Status:", res.status)
         if (!res.ok) {
           const errorText = await res.text()
           throw new Error(`HTTP ${res.status}: ${errorText}`)
         }
         const data = await res.json()
-        console.log("[OverviewPage] Fetched restaurants:", data)
-        if (mounted && Array.isArray(data)) setRestaurants(data.slice(0, 8))
+        if (mounted && Array.isArray(data)) {
+          const items = data.slice(0, 8)
+          setRestaurants(items)
+        }
       } catch (e) {
-        console.error("Error fetching overview restaurants:", e)
         if (mounted) setError(e.message || "Lỗi tải dữ liệu")
       } finally {
         if (mounted) setLoading(false)
       }
     })()
-    return () => (mounted = false)
-  }, [])
+    return () => {
+      mounted = false
+    }
+  }, [user])
 
-  return (
-    <>
-      {/* Stats Cards */}
-      <div className="dashboard-stats-grid">
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">🏪</span>
-          <div className="dashboard-stat-value">156</div>
-          <div className="dashboard-stat-label">Nhà hàng</div>
-          <div className="dashboard-stat-change positive">↑ 12% so với tháng trước</div>
-        </div>
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">📋</span>
-          <div className="dashboard-stat-value">2,453</div>
-          <div className="dashboard-stat-label">Đơn hàng</div>
-          <div className="dashboard-stat-change positive">↑ 8% so với tháng trước</div>
-        </div>
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">👥</span>
-          <div className="dashboard-stat-value">8,291</div>
-          <div className="dashboard-stat-label">Khách hàng</div>
-          <div className="dashboard-stat-change positive">↑ 23% so với tháng trước</div>
-        </div>
-      </div>
-
-      {/* Registered restaurants table */}
-      <div className="dashboard-table-container" style={{ marginTop: 20 }}>
-        <div className="dashboard-table-header">
-          <h3 className="dashboard-table-title">Danh sách nhà hàng đã đăng ký</h3>
-          <button className="dashboard-btn dashboard-btn-secondary">Xem tất cả</button>
-        </div>
-
-        {loading && <p style={{ padding: "20px", textAlign: "center" }}>Đang tải dữ liệu...</p>}
-        {error && <p style={{ padding: "20px", textAlign: "center", color: "red" }}>Lỗi: {error}</p>}
-
-        {!loading && restaurants.length === 0 && (
-          <p style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>Không có nhà hàng đăng ký</p>
-        )}
-
-        {!loading && restaurants.length > 0 && (
-          <table className="dashboard-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Tên nhà hàng</th>
-                <th>Chủ quán</th>
-                <th>Địa chỉ</th>
-                <th>Điện thoại</th>
-                <th>Trạng thái</th>
-                <th>Ngày đăng ký</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {restaurants.map((r) => (
-                <tr key={r.id}>
-                  <td>#{r.id}</td>
-                  <td>{r.name}</td>
-                  <td>{r.ownerName || "N/A"}</td>
-                  <td>{r.address || "-"}</td>
-                  <td>{r.phoneNumber || "-"}</td>
-                  <td>
-                    <span className={`dashboard-badge ${r.isActive ? "dashboard-badge-success" : "dashboard-badge-warning"}`}>
-                      {r.isActive ? "Hoạt động" : "Chờ duyệt"}
-                    </span>
-                  </td>
-                  <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "-"}</td>
-                  <td>
-                    <button className="dashboard-action-btn dashboard-action-btn-edit">Xem</button>
-                    <button className="dashboard-action-btn dashboard-action-btn-delete">Xóa</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </>
-  )
-}
-
-function RestaurantsPage({ user }) {
-  const [showModal, setShowModal] = useState(false)
-  const [restaurants, setRestaurants] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    fetchRestaurants()
-  }, [])
-
-  const fetchRestaurants = async () => {
-    try {
-      setLoading(true)
-      const token = localStorage.getItem("s2o_token")
-      const apiBase = "http://localhost:7001"
-      const response = await fetch(`${apiBase}/api/admin/tenants`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      console.log("[RestaurantsPage] API Response Status:", response.status)
-      if (!response.ok) {
-        const text = await response.text().catch(() => null)
-        throw new Error(`Failed to fetch restaurants: ${response.status} ${response.statusText} ${text || ''}`)
-      }
-
-      const data = await response.json()
-      console.log("[RestaurantsPage] Fetched tenants:", data)
-      setRestaurants(data || [])
-      setError(null)
-    } catch (err) {
-      console.error("[RestaurantsPage] Error fetching restaurants:", err)
-      setError(err.message)
-      setRestaurants([])
-    } finally {
-      setLoading(false)
+  const handleLogout = () => {
+    if (confirm("Bạn có chắc muốn đăng xuất?")) {
+      localStorage.removeItem("s2o_token")
+      localStorage.removeItem("s2o_user")
+      router.push("/login")
     }
   }
 
+  if (authLoading || !user) {
+    return (
+      <div className="dashboard-loading">
+        <div className="dashboard-spinner" />
+        <p>Đang tải dữ liệu...</p>
+      </div>
+    )
+  }
+
   return (
-    <>
-      <div className="dashboard-table-container">
-        <div className="dashboard-table-header">
-          <h3 className="dashboard-table-title">Danh sách nhà hàng</h3>
-          <div className="dashboard-table-actions">
-            <button className="dashboard-btn dashboard-btn-secondary">
-              <span>📊</span> Xuất báo cáo
-            </button>
-            <button className="dashboard-btn dashboard-btn-primary" onClick={() => setShowModal(true)}>
-              <span>+</span> Thêm nhà hàng
-            </button>
+    <div className="dashboard-container">
+      <div className="dashboard-sidebar">
+        <div className="dashboard-sidebar-header">
+          <h2>S2O Admin</h2>
+        </div>
+        <nav className="dashboard-sidebar-nav">
+          <ul>
+            {NAV_ITEMS.map((item) => (
+              <li
+                key={item.key}
+                className={item.key === "dashboard" ? "active" : ""}
+                onClick={() => router.push(item.href)}
+              >
+                <span style={{ marginRight: 8 }}>{item.icon}</span>
+                {item.label}
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="dashboard-sidebar-footer">
+          <button onClick={handleLogout} className="dashboard-logout-btn">
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+
+      <div className="dashboard-main">
+        <div className="dashboard-header">
+          <h1>Dashboard</h1>
+          <div className="dashboard-user-info">
+            <div className="dashboard-user-name">{user?.fullName || user?.username}</div>
+            <div className="dashboard-user-role">{user?.role}</div>
           </div>
         </div>
 
-        {loading && <p style={{ padding: "20px", textAlign: "center" }}>Đang tải dữ liệu...</p>}
-        {error && <p style={{ padding: "20px", textAlign: "center", color: "red" }}>Lỗi: {error}</p>}
+        <div className="dashboard-stats-grid">
+          <div className="dashboard-stat-card">
+            <span className="dashboard-stat-icon">🏪</span>
+            <div className="dashboard-stat-value">156</div>
+            <div className="dashboard-stat-label">Nhà hàng</div>
+            <div className="dashboard-stat-change positive">↑ 12% so với tháng trước</div>
+          </div>
+          <div className="dashboard-stat-card">
+            <span className="dashboard-stat-icon">📋</span>
+            <div className="dashboard-stat-value">2,453</div>
+            <div className="dashboard-stat-label">Đơn hàng</div>
+            <div className="dashboard-stat-change positive">↑ 8% so với tháng trước</div>
+          </div>
+          <div className="dashboard-stat-card">
+            <span className="dashboard-stat-icon">👥</span>
+            <div className="dashboard-stat-value">8,291</div>
+            <div className="dashboard-stat-label">Khách hàng</div>
+            <div className="dashboard-stat-change positive">↑ 23% so với tháng trước</div>
+          </div>
+        </div>
 
-        {!loading && restaurants.length === 0 && (
-          <p style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>Không có nhà hàng nào</p>
-        )}
+        <div className="dashboard-table-container dashboard-table-overlay-holder" style={{ marginTop: 20 }}>
+          <div className="dashboard-table-header">
+            <div>
+              <h3 className="dashboard-table-title">Danh sách nhà hàng đã đăng ký</h3>
+              <p className="dashboard-table-subtitle">Quản lý tất cả các nhà hàng trong hệ thống</p>
+            </div>
+          </div>
 
-        {!loading && restaurants.length > 0 && (
-          <table className="dashboard-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Tên nhà hàng</th>
-                <th>Chủ quán</th>
-                <th>Địa chỉ</th>
-                <th>Số điện thoại</th>
-                <th>Trạng thái</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {restaurants.map((restaurant) => (
-                <tr key={restaurant.id}>
-                  <td>#{restaurant.id}</td>
-                  <td>{restaurant.name}</td>
-                  <td>{restaurant.ownerName || "N/A"}</td>
-                  <td>{restaurant.address}</td>
-                  <td>{restaurant.phoneNumber || "N/A"}</td>
-                  <td>
+          {loading && <p style={{ padding: "20px", textAlign: "center" }}>Đang tải dữ liệu...</p>}
+          {error && <p style={{ padding: "20px", textAlign: "center", color: "red" }}>Lỗi: {error}</p>}
+
+          {!loading && restaurants.length === 0 && (
+            <p style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>Không có nhà hàng đăng ký</p>
+          )}
+
+          {!loading && restaurants.length > 0 && (
+            <table className="dashboard-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Tên nhà hàng</th>
+                  <th>Chủ quán</th>
+                  <th>Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                {restaurants.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <div className="dashboard-table-cell-id">
+                        <span className="dashboard-table-id-badge">#{r.id}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="dashboard-table-cell-restaurant">
+                        <div className="dashboard-restaurant-avatar">
+                          <span>🏪</span>
+                        </div>
+                        <div className="dashboard-restaurant-info">
+                          <span className="dashboard-table-name">{r.name}</span>
+                          <span className="dashboard-restaurant-meta">{r.address ? r.address.substring(0, 30) + "..." : "Chưa có địa chỉ"}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="dashboard-table-cell-owner">
+                        <span className="dashboard-owner-icon">👤</span>
+                        <span className="dashboard-table-owner">{r.ownerName || "Chưa cập nhật"}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <button
+                        className="dashboard-action-btn dashboard-action-btn-view"
+                        onClick={() => {
+                          setSelectedRestaurant(r)
+                          setShowContactPanel(false)
+                        }}
+                      >
+                        <span className="dashboard-btn-icon">👁️</span>
+                        <span>Xem chi tiết</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {selectedRestaurant && (
+            <div className="dashboard-detail-overlay" role="dialog" aria-modal="true">
+              <div className="dashboard-detail-modal">
+                <div className="dashboard-detail-header">
+                  <div>
+                    <p className="dashboard-detail-eyebrow">Hồ sơ nhà hàng</p>
+                    <h4 className="dashboard-detail-title">{selectedRestaurant.name}</h4>
+                    <p className="dashboard-detail-meta">Mã #{selectedRestaurant.id} • Chủ: {selectedRestaurant.ownerName || "N/A"}</p>
+                  </div>
+                  <div className="dashboard-detail-chips">
                     <span
-                      className={`dashboard-badge ${
-                        restaurant.isActive ? "dashboard-badge-success" : "dashboard-badge-warning"
-                      }`}
+                      className={`dashboard-badge ${selectedRestaurant.isActive ? "dashboard-badge-success" : "dashboard-badge-warning"}`}
                     >
-                      {restaurant.isActive ? "Hoạt động" : "Chờ duyệt"}
+                      {selectedRestaurant.isActive ? "Hoạt động" : "Chờ duyệt"}
                     </span>
-                  </td>
-                  <td>
-                    <button className="dashboard-action-btn dashboard-action-btn-edit">Sửa</button>
-                    <button className="dashboard-action-btn dashboard-action-btn-delete">Xóa</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                    <span className="dashboard-pill">Đăng ký: {selectedRestaurant.createdAt ? new Date(selectedRestaurant.createdAt).toLocaleDateString() : "-"}</span>
+                  </div>
+                </div>
 
-      {showModal && (
-        <div className="dashboard-modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="dashboard-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="dashboard-modal-header">
-              <h2 className="dashboard-modal-title">Thêm nhà hàng mới</h2>
-              <button className="dashboard-modal-close" onClick={() => setShowModal(false)}>
-                ×
-              </button>
+                <div className="dashboard-detail-grid">
+                  <div className="dashboard-detail-item">
+                    <span className="dashboard-detail-label">Địa chỉ</span>
+                    <p className="dashboard-detail-value">{selectedRestaurant.address || "Chưa cập nhật"}</p>
+                  </div>
+                  <div className="dashboard-detail-item">
+                    <span className="dashboard-detail-label">Số điện thoại</span>
+                    <p className="dashboard-detail-value">{selectedRestaurant.phoneNumber || "Chưa cập nhật"}</p>
+                  </div>
+                  <div className="dashboard-detail-item">
+                    <span className="dashboard-detail-label">Email liên hệ</span>
+                    <p className="dashboard-detail-value">{selectedRestaurant.email || "Chưa cập nhật"}</p>
+                  </div>
+                  <div className="dashboard-detail-item">
+                    <span className="dashboard-detail-label">Ghi chú</span>
+                    <p className="dashboard-detail-value">{selectedRestaurant.note || "Không có"}</p>
+                  </div>
+                </div>
+
+                <div className="dashboard-contact-panel">
+                  <div className="dashboard-contact-header">
+                    <div>
+                      <p className="dashboard-detail-eyebrow" style={{ color: "#0f172a" }}>Liên hệ nhanh</p>
+                      <p className="dashboard-contact-note">Chọn cách liên lạc với nhà hàng ngay lập tức.</p>
+                    </div>
+                    <button
+                      className={`dashboard-chip-toggle ${showContactPanel ? "active" : ""}`}
+                      onClick={() => setShowContactPanel((v) => !v)}
+                      aria-pressed={showContactPanel}
+                    >
+                      {showContactPanel ? "Thu gọn" : "Mở công cụ"}
+                    </button>
+                  </div>
+
+                  {showContactPanel && (
+                    <div className="dashboard-contact-grid">
+                      <ContactAction
+                        label="Gọi điện"
+                        value={selectedRestaurant.phoneNumber}
+                        actionText="Gọi"
+                        onAction={() => handleCall(selectedRestaurant?.phoneNumber)}
+                      />
+                      <ContactAction
+                        label="Gửi email"
+                        value={selectedRestaurant.email}
+                        actionText="Soạn thư"
+                        onAction={() => handleMail(selectedRestaurant?.email)}
+                      />
+                      <ContactAction
+                        label="Sao chép số"
+                        value={selectedRestaurant.phoneNumber}
+                        actionText="Copy"
+                        onAction={() => handleCopy(selectedRestaurant?.phoneNumber, "Đã sao chép số điện thoại")}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="dashboard-detail-actions">
+                  <button className="dashboard-btn dashboard-btn-secondary" onClick={() => { setSelectedRestaurant(null); setShowContactPanel(false) }}>
+                    Đóng
+                  </button>
+                </div>
+              </div>
             </div>
-            <form>
-              <div className="dashboard-form-group">
-                <label className="dashboard-form-label">Tên nhà hàng</label>
-                <input type="text" className="dashboard-form-input" placeholder="Nhập tên nhà hàng" />
-              </div>
-              <div className="dashboard-form-group">
-                <label className="dashboard-form-label">Chủ quán</label>
-                <input type="text" className="dashboard-form-input" placeholder="Nhập tên chủ quán" />
-              </div>
-              <div className="dashboard-form-group">
-                <label className="dashboard-form-label">Địa chỉ</label>
-                <input type="text" className="dashboard-form-input" placeholder="Nhập địa chỉ" />
-              </div>
-              <div className="dashboard-form-group">
-                <label className="dashboard-form-label">Số điện thoại</label>
-                <input type="tel" className="dashboard-form-input" placeholder="Nhập số điện thoại" />
-              </div>
-              <div className="dashboard-form-group">
-                <label className="dashboard-form-label">Email</label>
-                <input type="email" className="dashboard-form-input" placeholder="Nhập email" />
-              </div>
-            </form>
-            <div className="dashboard-modal-footer">
-              <button className="dashboard-btn dashboard-btn-secondary" onClick={() => setShowModal(false)}>
-                Hủy
-              </button>
-              <button className="dashboard-btn dashboard-btn-primary">Thêm nhà hàng</button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
-    </>
+      </div>
+    </div>
   )
 }
 
-function OrdersPage({ user }) {
+function ContactAction({ label, value, actionText, onAction }) {
+  const isDisabled = !value
   return (
-    <>
-      <div className="dashboard-stats-grid">
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">📋</span>
-          <div className="dashboard-stat-value">2,453</div>
-          <div className="dashboard-stat-label">Tổng đơn hàng</div>
-        </div>
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">⏳</span>
-          <div className="dashboard-stat-value">45</div>
-          <div className="dashboard-stat-label">Đang xử lý</div>
-        </div>
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">✅</span>
-          <div className="dashboard-stat-value">2,389</div>
-          <div className="dashboard-stat-label">Hoàn thành</div>
-        </div>
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">❌</span>
-          <div className="dashboard-stat-value">19</div>
-          <div className="dashboard-stat-label">Đã hủy</div>
-        </div>
+    <div className={`dashboard-contact-card ${isDisabled ? "disabled" : ""}`}>
+      <div>
+        <p className="dashboard-contact-label">{label}</p>
+        <p className="dashboard-contact-value">{value || "Chưa có thông tin"}</p>
       </div>
-
-      <div className="dashboard-table-container">
-        <div className="dashboard-table-header">
-          <h3 className="dashboard-table-title">Tất cả đơn hàng</h3>
-          <div className="dashboard-table-actions">
-            <button className="dashboard-btn dashboard-btn-secondary">Lọc</button>
-            <button className="dashboard-btn dashboard-btn-secondary">Xuất Excel</button>
-          </div>
-        </div>
-        <table className="dashboard-table">
-          <thead>
-            <tr>
-              <th>Mã đơn</th>
-              <th>Nhà hàng</th>
-              <th>Khách hàng</th>
-              <th>Số món</th>
-              <th>Tổng tiền</th>
-              <th>Thanh toán</th>
-              <th>Trạng thái</th>
-              <th>Thời gian</th>
-              <th>Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>#ORD-1234</td>
-              <td>Phở Hà Nội 24</td>
-              <td>Nguyễn Văn A</td>
-              <td>3</td>
-              <td>245,000đ</td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-success">Đã thanh toán</span>
-              </td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-success">Hoàn thành</span>
-              </td>
-              <td>20/12/2024 14:30</td>
-              <td>
-                <button className="dashboard-action-btn dashboard-action-btn-edit">Xem</button>
-              </td>
-            </tr>
-            <tr>
-              <td>#ORD-1233</td>
-              <td>Bún Chả Hương Liên</td>
-              <td>Trần Thị B</td>
-              <td>2</td>
-              <td>180,000đ</td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-warning">Chưa thanh toán</span>
-              </td>
-              <td>
-                <span className="dashboard-badge dashboard-badge-warning">Đang xử lý</span>
-              </td>
-              <td>20/12/2024 14:18</td>
-              <td>
-                <button className="dashboard-action-btn dashboard-action-btn-edit">Xem</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </>
+      <button
+        className="dashboard-contact-btn"
+        disabled={isDisabled}
+        onClick={onAction}
+        aria-label={`${actionText} ${label}`}
+      >
+        {actionText}
+      </button>
+    </div>
   )
 }
 
-function CustomersPage({ user }) {
-  const [customers, setCustomers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+function handleCall(phone) {
+  if (!phone) return alert("Chưa có số điện thoại")
+  if (typeof window !== "undefined") window.open(`tel:${phone}`)
+}
 
-  useEffect(() => {
-    fetchCustomers()
-  }, [])
+function handleMail(email) {
+  if (!email) return alert("Chưa có email")
+  if (typeof window !== "undefined") window.open(`mailto:${email}`)
+}
 
-  const fetchCustomers = async () => {
-    try {
-      setLoading(true)
-      const token = localStorage.getItem("s2o_token")
-      const apiBase = "http://localhost:7001"
-      const response = await fetch(`${apiBase}/api/admin/customers`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      console.log("[CustomersPage] API Response Status:", response.status)
-      if (!response.ok) {
-        const text = await response.text().catch(() => null)
-        throw new Error(`Failed to fetch customers: ${response.status} ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      console.log("[CustomersPage] Fetched customers:", data)
-      setCustomers(data || [])
-      setError(null)
-    } catch (err) {
-      console.error("[CustomersPage] Error fetching customers:", err)
-      setError(err.message)
-      setCustomers([])
-    } finally {
-      setLoading(false)
-    }
+function handleCopy(value, message) {
+  if (!value) return alert("Không có dữ liệu để sao chép")
+  if (typeof navigator !== "undefined" && navigator.clipboard) {
+    navigator.clipboard.writeText(value).then(() => {
+      alert(message || "Đã sao chép")
+    })
   }
-
-  return (
-    <>
-      <div className="dashboard-stats-grid">
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">👥</span>
-          <div className="dashboard-stat-value">{customers.length}</div>
-          <div className="dashboard-stat-label">Tổng khách hàng</div>
-        </div>
-        <div className="dashboard-stat-card">
-          <span className="dashboard-stat-icon">📅</span>
-          <div className="dashboard-stat-value">
-            {customers.filter(c => {
-              const createdDate = new Date(c.createdAt)
-              const now = new Date()
-              return createdDate.getMonth() === now.getMonth() && createdDate.getFullYear() === now.getFullYear()
-            }).length}
-          </div>
-          <div className="dashboard-stat-label">Khách mới (tháng này)</div>
-        </div>
-      </div>
-
-      <div className="dashboard-table-container">
-        <div className="dashboard-table-header">
-          <h3 className="dashboard-table-title">Danh sách khách hàng</h3>
-          <div className="dashboard-table-actions">
-            <button className="dashboard-btn dashboard-btn-secondary">Tìm kiếm</button>
-            <button className="dashboard-btn dashboard-btn-primary">+ Thêm khách hàng</button>
-          </div>
-        </div>
-
-        {loading && <p style={{ padding: "20px", textAlign: "center" }}>Đang tải dữ liệu...</p>}
-        {error && <p style={{ padding: "20px", textAlign: "center", color: "red" }}>Lỗi: {error}</p>}
-
-        {!loading && customers.length === 0 && (
-          <p style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>Không có khách hàng nào</p>
-        )}
-
-        {!loading && customers.length > 0 && (
-          <table className="dashboard-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Tên khách hàng</th>
-                <th>Email/Username</th>
-                <th>Số điện thoại</th>
-                <th>Điểm tích lũy</th>
-                <th>Hạng</th>
-                <th>Ngày tham gia</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map((customer) => (
-                <tr key={customer.id}>
-                  <td>#{customer.id}</td>
-                  <td>{customer.fullName}</td>
-                  <td>{customer.username}</td>
-                  <td>{customer.phoneNumber || "N/A"}</td>
-                  <td>{customer.points}</td>
-                  <td>
-                    <span className={`dashboard-badge ${customer.points >= 100 ? "dashboard-badge-warning" : "dashboard-badge-info"}`}>
-                      {customer.points >= 100 ? "VIP" : "Thường"}
-                    </span>
-                  </td>
-                  <td>{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </>
-  )
-}
-
-function SettingsPage({ user }) {
-  return (
-    <>
-      <div className="dashboard-card">
-        <h3>Thông tin hệ thống</h3>
-        <div className="dashboard-form-group">
-          <label className="dashboard-form-label">Tên hệ thống</label>
-          <input type="text" className="dashboard-form-input" defaultValue="S2O Smart Restaurant" />
-        </div>
-        <div className="dashboard-form-group">
-          <label className="dashboard-form-label">Email hỗ trợ</label>
-          <input type="email" className="dashboard-form-input" defaultValue="support@s2o.com" />
-        </div>
-        <div className="dashboard-form-group">
-          <label className="dashboard-form-label">Hotline</label>
-          <input type="tel" className="dashboard-form-input" defaultValue="1900-1234" />
-        </div>
-        <button className="dashboard-btn dashboard-btn-primary">Lưu thay đổi</button>
-      </div>
-
-      <div className="dashboard-card" style={{ marginTop: 24 }}>
-        <h3>Cài đặt tài khoản</h3>
-        <div className="dashboard-form-group">
-          <label className="dashboard-form-label">Họ và tên</label>
-          <input type="text" className="dashboard-form-input" defaultValue={user?.fullName || user?.username} />
-        </div>
-        <div className="dashboard-form-group">
-          <label className="dashboard-form-label">Email</label>
-          <input type="email" className="dashboard-form-input" defaultValue={user?.email} />
-        </div>
-        <div className="dashboard-form-group">
-          <label className="dashboard-form-label">Mật khẩu mới</label>
-          <input type="password" className="dashboard-form-input" placeholder="Nhập mật khẩu mới" />
-        </div>
-        <button className="dashboard-btn dashboard-btn-primary">Cập nhật tài khoản</button>
-      </div>
-    </>
-  )
 }
 
 
