@@ -18,6 +18,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [searchTerm, setSearchTerm] = useState("")
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -87,6 +88,13 @@ export default function CustomersPage() {
     )
   }
 
+  // Lọc khách hàng theo tên
+  const filteredCustomers = customers.filter((customer) => {
+    const fullName = (customer.fullName || "").toLowerCase()
+    const search = searchTerm.toLowerCase()
+    return fullName.includes(search)
+  })
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-sidebar">
@@ -146,49 +154,90 @@ export default function CustomersPage() {
           <div className="dashboard-table-header">
             <h3 className="dashboard-table-title">Danh sách khách hàng</h3>
             <div className="dashboard-table-actions">
-              <button className="dashboard-btn dashboard-btn-secondary">Tìm kiếm</button>
-              <button className="dashboard-btn dashboard-btn-primary">+ Thêm khách hàng</button>
+              <input
+                type="text"
+                placeholder="Tìm kiếm theo tên khách hàng..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="dashboard-search-input"
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #e5e7eb",
+                  fontSize: "14px",
+                  width: "300px"
+                }}
+              />
             </div>
           </div>
 
           {loading && <p style={{ padding: "20px", textAlign: "center" }}>Đang tải dữ liệu...</p>}
           {error && <p style={{ padding: "20px", textAlign: "center", color: "red" }}>Lỗi: {error}</p>}
 
-          {!loading && customers.length === 0 && (
+          {!loading && filteredCustomers.length === 0 && searchTerm && (
+            <p style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>
+              Không tìm thấy khách hàng nào với từ khóa "{searchTerm}"
+            </p>
+          )}
+
+          {!loading && customers.length === 0 && !searchTerm && (
             <p style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>Không có khách hàng nào</p>
           )}
 
-          {!loading && customers.length > 0 && (
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Tên khách hàng</th>
-                  <th>Email/Username</th>
-                  <th>Số điện thoại</th>
-                  <th>Điểm tích lũy</th>
-                  <th>Hạng</th>
-                  <th>Ngày tham gia</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((customer) => (
-                  <tr key={customer.id}>
-                    <td>#{customer.id}</td>
-                    <td>{customer.fullName}</td>
-                    <td>{customer.username}</td>
-                    <td>{customer.phoneNumber || "N/A"}</td>
-                    <td>{customer.points}</td>
-                    <td>
-                      <span className={`dashboard-badge ${customer.points >= 100 ? "dashboard-badge-warning" : "dashboard-badge-info"}`}>
-                        {customer.points >= 100 ? "VIP" : "Thường"}
-                      </span>
-                    </td>
-                    <td>{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : "-"}</td>
+          {!loading && filteredCustomers.length > 0 && (
+            <div style={{ overflowX: "auto" }}>
+              <table className="dashboard-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: "80px" }}>ID</th>
+                    <th style={{ minWidth: "200px" }}>Khách hàng</th>
+                    <th style={{ minWidth: "180px" }}>Liên hệ</th>
+                    <th style={{ width: "120px", textAlign: "center" }}>Điểm</th>
+                    <th style={{ width: "100px", textAlign: "center" }}>Hạng</th>
+                    <th style={{ width: "140px" }}>Tham gia</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredCustomers.map((customer) => (
+                    <tr key={customer.id}>
+                      <td className="customer-table-id">#{customer.id}</td>
+                      <td>
+                        <div className="customer-cell">
+                          <div className="customer-avatar">
+                            {customer.fullName ? customer.fullName.charAt(0).toUpperCase() : "?"}
+                          </div>
+                          <div className="customer-info">
+                            <div className="customer-name">{customer.fullName}</div>
+                            <div className="customer-username">@{customer.username}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="customer-contact">
+                          <div className="customer-contact-item">📧 {customer.username}</div>
+                          <div className="customer-contact-item">📱 {customer.phoneNumber || "N/A"}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className={`customer-points ${customer.points >= 100 ? "customer-points-vip" : "customer-points-regular"}`}>
+                          {customer.points}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <span className={`dashboard-badge ${customer.points >= 100 ? "dashboard-badge-warning" : "dashboard-badge-info"}`}>
+                          {customer.points >= 100 ? "⭐ VIP" : "👤 Thường"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="customer-date">
+                          {customer.createdAt ? new Date(customer.createdAt).toLocaleDateString("vi-VN") : "-"}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

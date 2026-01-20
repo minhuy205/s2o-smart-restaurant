@@ -5,9 +5,9 @@ import { useRouter } from "next/router"
 
 const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: "📊", href: "/dashboard" },
-  { key: "restaurants", label: "Nhà hàng", icon: "🏪", href: "/restaurants" },
-  { key: "customers", label: "Khách hàng", icon: "👥", href: "/customers" },
-  { key: "orders", label: "Đơn hàng", icon: "📋", href: "/orders" },
+  { key: "restaurants", label: "Quản Lý Nhà hàng", icon: "🏪", href: "/restaurants" },
+  { key: "customers", label: "Quản Lý Khách hàng", icon: "👥", href: "/customers" },
+  { key: "orders", label: "Quản Lý Đơn hàng", icon: "📋", href: "/orders" },
   { key: "settings", label: "Cài đặt", icon: "⚙️", href: "/settings" },
 ]
 

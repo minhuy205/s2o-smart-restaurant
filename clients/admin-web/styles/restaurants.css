@@ -1,7 +1,7 @@
 /* Restaurants page specific styles */
 
 /* Restaurant Avatar in table */
-.dashboard-restaurant-avatar {
+.restaurant-avatar {
   width: 44px;
   height: 44px;
   border-radius: 12px;
@@ -14,22 +14,47 @@
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
 }
 
-.dashboard-table-cell-restaurant {
+.restaurant-cell {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
-.dashboard-restaurant-info {
+.restaurant-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 
-.dashboard-restaurant-meta {
+.restaurant-name {
+  font-weight: 700;
+  color: #1a1a1a;
+  font-size: 15px;
+}
+
+.restaurant-owner {
   font-size: 12px;
   color: #94a3b8;
-  font-weight: 500;
+  margin-top: 2px;
+}
+
+.restaurant-address {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.restaurant-contact {
+  font-size: 13px;
+}
+
+.restaurant-contact-item {
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.restaurant-table-id {
+  font-weight: 600;
+  color: #6b7280;
 }
 
 /* Add Restaurant Modal specific styles */
@@ -86,3 +111,4 @@
   background: white;
   cursor: pointer;
 }
+

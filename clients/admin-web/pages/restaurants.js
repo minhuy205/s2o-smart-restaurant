@@ -228,9 +228,6 @@ export default function RestaurantsPage() {
           <div className="dashboard-table-header">
             <h3 className="dashboard-table-title">Danh sách nhà hàng</h3>
             <div className="dashboard-table-actions">
-              <button className="dashboard-btn dashboard-btn-secondary">
-                <span>📊</span> Xuất báo cáo
-              </button>
               <button className="dashboard-btn dashboard-btn-primary" onClick={openAddModal}>
                 <span>+</span> Thêm nhà hàng
               </button>
@@ -262,53 +259,58 @@ export default function RestaurantsPage() {
           )}
 
           {!loading && restaurants.length > 0 && (
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Tên nhà hàng</th>
-                  <th>Chủ quán</th>
-                  <th>Địa chỉ</th>
-                  <th>Số điện thoại</th>
-                  <th>Trạng thái</th>
-                  <th>Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {restaurants.map((restaurant) => (
-                  <tr key={restaurant.id}>
-                    <td>#{restaurant.id}</td>
-                    <td>{restaurant.name}</td>
-                    <td>{restaurant.ownerName || "N/A"}</td>
-                    <td>{restaurant.address}</td>
-                    <td>{restaurant.phoneNumber || "N/A"}</td>
-                    <td>
-                      <span
-                        className={`dashboard-badge ${
-                          restaurant.isActive ? "dashboard-badge-success" : "dashboard-badge-warning"
-                        }`}
-                      >
-                        {restaurant.isActive ? "Hoạt động" : "Chờ duyệt"}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="dashboard-action-btn dashboard-action-btn-edit"
-                        onClick={() => openEditModal(restaurant)}
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        className="dashboard-action-btn dashboard-action-btn-delete"
-                        onClick={() => handleDelete(restaurant.id)}
-                      >
-                        Xóa
-                      </button>
-                    </td>
+            <div style={{ overflowX: "auto" }}>
+              <table className="dashboard-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: "80px" }}>ID</th>
+                    <th style={{ minWidth: "220px" }}>Nhà hàng</th>
+                    <th style={{ minWidth: "200px" }}>Địa chỉ</th>
+                    <th style={{ minWidth: "180px" }}>Liên hệ</th>
+                    <th style={{ width: "120px", textAlign: "center" }}>Trạng thái</th>
+                    <th style={{ width: "180px", textAlign: "center" }}>Thao tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {restaurants.map((restaurant) => (
+                    <tr key={restaurant.id}>
+                      <td className="restaurant-table-id">#{restaurant.id}</td>
+                      <td>
+                        <div className="restaurant-cell">
+                          <div className="restaurant-avatar">🏪</div>
+                          <div className="restaurant-info">
+                            <div className="restaurant-name">{restaurant.name}</div>
+                            <div className="restaurant-owner">👤 {restaurant.ownerName || "Chưa cập nhật"}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="restaurant-address">📍 {restaurant.address}</div>
+                      </td>
+                      <td>
+                        <div className="restaurant-contact">
+                          <div className="restaurant-contact-item">📞 {restaurant.phoneNumber || "N/A"}</div>
+                          <div className="restaurant-contact-item">📧 {restaurant.email || "N/A"}</div>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <span className={`dashboard-badge ${restaurant.isActive ? "dashboard-badge-success" : "dashboard-badge-danger"}`}>
+                          {restaurant.isActive ? "✓ Hoạt động" : "✕ Tạm dừng"}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <button className="dashboard-action-btn dashboard-action-btn-edit" onClick={() => openEditModal(restaurant)}>
+                          ✏️ Sửa
+                        </button>
+                        <button className="dashboard-action-btn dashboard-action-btn-delete" onClick={() => handleDelete(restaurant.id)}>
+                          🗑️ Xóa
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
