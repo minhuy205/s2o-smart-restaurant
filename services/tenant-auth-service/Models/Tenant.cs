@@ -7,6 +7,7 @@ public class Tenant
     public string? Address { get; set; } // Địa chỉ kinh doanh
     public string? OwnerName { get; set; } // Họ và tên chủ sở hữu
     public string? PhoneNumber { get; set; } // Số điện thoại
+    public string? Email { get; set; } // Email liên hệ
     public string? LogoUrl { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

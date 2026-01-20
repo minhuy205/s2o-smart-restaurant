@@ -48,6 +48,10 @@ using (var scope = app.Services.CreateScope())
     try {
         var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         db.Database.EnsureCreated();
+
+        // Ensure missing columns are added when model changes but database already exists
+        // Note: EnsureCreated does not apply incremental schema changes, so we patch critical columns here
+        db.Database.ExecuteSqlRaw("ALTER TABLE \"Tenants\" ADD COLUMN IF NOT EXISTS \"Email\" text");
     } catch (Exception ex) {
         Console.WriteLine($"Lỗi tạo DB: {ex.Message}");
     }
