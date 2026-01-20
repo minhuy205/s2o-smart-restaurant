@@ -16,10 +16,56 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [restaurants, setRestaurants] = useState([])
+  const [statistics, setStatistics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedRestaurant, setSelectedRestaurant] = useState(null)
   const [showContactPanel, setShowContactPanel] = useState(false)
+
+  const fetchDashboardData = async () => {
+    setError(null)
+    try {
+      setLoading(true)
+      const token = localStorage.getItem("s2o_token")
+      const apiBase = "http://localhost:7001"
+
+      const resRestaurants = await fetch(`${apiBase}/api/admin/tenants?limit=8`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!resRestaurants.ok) {
+        const errorText = await resRestaurants.text()
+        throw new Error(`HTTP ${resRestaurants.status}: ${errorText}`)
+      }
+      const dataRestaurants = await resRestaurants.json()
+
+      const resStats = await fetch(`${apiBase}/api/admin/statistics`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!resStats.ok) {
+        const errorText = await resStats.text()
+        throw new Error(`HTTP ${resStats.status}: ${errorText}`)
+      }
+      const dataStats = await resStats.json()
+
+      if (Array.isArray(dataRestaurants)) {
+        const items = dataRestaurants.slice(0, 8)
+        setRestaurants(items)
+      }
+      setStatistics(dataStats)
+    } catch (e) {
+      setError(e.message || "Lỗi tải dữ liệu")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -41,37 +87,22 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
-    let mounted = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        const token = localStorage.getItem("s2o_token")
-        const apiBase = "http://localhost:7001"
-        const res = await fetch(`${apiBase}/api/admin/tenants?limit=8`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        })
+    fetchDashboardData()
+  }, [user])
 
-        if (!res.ok) {
-          const errorText = await res.text()
-          throw new Error(`HTTP ${res.status}: ${errorText}`)
-        }
-        const data = await res.json()
-        if (mounted && Array.isArray(data)) {
-          const items = data.slice(0, 8)
-          setRestaurants(items)
-        }
-      } catch (e) {
-        if (mounted) setError(e.message || "Lỗi tải dữ liệu")
-      } finally {
-        if (mounted) setLoading(false)
+  useEffect(() => {
+    if (!user) return
+    const handleFocus = () => {
+      const flag = localStorage.getItem("s2o_dashboard_needs_refresh")
+      if (flag === "1") {
+        localStorage.removeItem("s2o_dashboard_needs_refresh")
+        fetchDashboardData()
       }
-    })()
-    return () => {
-      mounted = false
     }
+
+    handleFocus()
+    window.addEventListener("focus", handleFocus)
+    return () => window.removeEventListener("focus", handleFocus)
   }, [user])
 
   const handleLogout = () => {
@@ -130,21 +161,33 @@ export default function DashboardPage() {
         <div className="dashboard-stats-grid">
           <div className="dashboard-stat-card">
             <span className="dashboard-stat-icon">🏪</span>
-            <div className="dashboard-stat-value">156</div>
+            <div className="dashboard-stat-value">{statistics?.totalRestaurants || 0}</div>
             <div className="dashboard-stat-label">Nhà hàng</div>
-            <div className="dashboard-stat-change positive">↑ 12% so với tháng trước</div>
+            <div className="dashboard-stat-change positive">
+              {statistics?.restaurantsThisMonth > 0 
+                ? `↑ ${statistics.restaurantsThisMonth} nhà hàng mới tháng này` 
+                : "Không có thay đổi"}
+            </div>
           </div>
           <div className="dashboard-stat-card">
             <span className="dashboard-stat-icon">📋</span>
-            <div className="dashboard-stat-value">2,453</div>
-            <div className="dashboard-stat-label">Đơn hàng</div>
-            <div className="dashboard-stat-change positive">↑ 8% so với tháng trước</div>
+            <div className="dashboard-stat-value">{statistics?.activeRestaurants || 0}</div>
+            <div className="dashboard-stat-label">Nhà hàng đang hoạt động</div>
+            <div className="dashboard-stat-change positive">
+              {statistics?.totalRestaurants > 0 
+                ? `${Math.round((statistics.activeRestaurants / statistics.totalRestaurants) * 100)}% đang hoạt động` 
+                : "Chưa có dữ liệu"}
+            </div>
           </div>
           <div className="dashboard-stat-card">
             <span className="dashboard-stat-icon">👥</span>
-            <div className="dashboard-stat-value">8,291</div>
-            <div className="dashboard-stat-label">Khách hàng</div>
-            <div className="dashboard-stat-change positive">↑ 23% so với tháng trước</div>
+            <div className="dashboard-stat-value">{statistics?.totalUsers || 0}</div>
+            <div className="dashboard-stat-label">Người dùng</div>
+            <div className="dashboard-stat-change positive">
+              {statistics?.usersThisMonth > 0 
+                ? `↑ ${statistics.usersThisMonth} người dùng mới tháng này` 
+                : "Không có thay đổi"}
+            </div>
           </div>
         </div>
 

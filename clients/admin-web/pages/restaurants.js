@@ -19,6 +19,15 @@ export default function RestaurantsPage() {
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [formData, setFormData] = useState({
+    name: "",
+    ownerName: "",
+    address: "",
+    phoneNumber: "",
+    email: "",
+  })
+  const [messageInfo, setMessageInfo] = useState({ text: "", type: "" })
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -57,7 +66,7 @@ export default function RestaurantsPage() {
 
       if (!response.ok) {
         const text = await response.text().catch(() => null)
-        throw new Error(`Failed to fetch restaurants: ${response.status} ${response.statusText} ${text || ''}`)
+        throw new Error(`Failed to fetch restaurants: ${response.status} ${response.statusText} ${text || ""}`)
       }
 
       const data = await response.json()
@@ -68,6 +77,97 @@ export default function RestaurantsPage() {
       setRestaurants([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const showMessage = (text, type) => {
+    setMessageInfo({ text, type })
+    setTimeout(() => setMessageInfo({ text: "", type: "" }), 3000)
+  }
+
+  const openAddModal = () => {
+    setEditingId(null)
+    setFormData({ name: "", ownerName: "", address: "", phoneNumber: "", email: "" })
+    setShowModal(true)
+  }
+
+  const openEditModal = (restaurant) => {
+    setEditingId(restaurant.id)
+    setFormData({
+      name: restaurant.name,
+      ownerName: restaurant.ownerName || "",
+      address: restaurant.address,
+      phoneNumber: restaurant.phoneNumber || "",
+      email: restaurant.email || "",
+    })
+    setShowModal(true)
+  }
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!formData.name || !formData.address) {
+      showMessage("Vui lòng điền tên nhà hàng và địa chỉ", "error")
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("s2o_token")
+      const apiBase = "http://localhost:7001"
+      const method = editingId ? "PUT" : "POST"
+      const url = editingId ? `${apiBase}/api/admin/tenants/${editingId}` : `${apiBase}/api/admin/tenants`
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `Lỗi: ${response.status}`)
+      }
+
+      showMessage(editingId ? "Cập nhật nhà hàng thành công" : "Thêm nhà hàng thành công", "success")
+      localStorage.setItem("s2o_dashboard_needs_refresh", "1")
+      setShowModal(false)
+      fetchRestaurants()
+    } catch (err) {
+      showMessage(err.message, "error")
+    }
+  }
+
+  const handleDelete = async (restaurantId) => {
+    if (!confirm("Bạn có chắc muốn xóa nhà hàng này?")) return
+
+    try {
+      const token = localStorage.getItem("s2o_token")
+      const apiBase = "http://localhost:7001"
+      const response = await fetch(`${apiBase}/api/admin/tenants/${restaurantId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `Lỗi: ${response.status}`)
+      }
+
+      showMessage("Xóa nhà hàng thành công", "success")
+      localStorage.setItem("s2o_dashboard_needs_refresh", "1")
+      fetchRestaurants()
+    } catch (err) {
+      showMessage(err.message, "error")
     }
   }
 
@@ -131,11 +231,28 @@ export default function RestaurantsPage() {
               <button className="dashboard-btn dashboard-btn-secondary">
                 <span>📊</span> Xuất báo cáo
               </button>
-              <button className="dashboard-btn dashboard-btn-primary" onClick={() => setShowModal(true)}>
+              <button className="dashboard-btn dashboard-btn-primary" onClick={openAddModal}>
                 <span>+</span> Thêm nhà hàng
               </button>
             </div>
           </div>
+
+          {messageInfo.text && (
+            <div
+              style={{
+                padding: "12px 16px",
+                margin: "0 0 16px 0",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: 500,
+                backgroundColor: messageInfo.type === "error" ? "#fee2e2" : "#dcfce7",
+                color: messageInfo.type === "error" ? "#991b1b" : "#166534",
+                border: `1px solid ${messageInfo.type === "error" ? "#fecaca" : "#bbf7d0"}`,
+              }}
+            >
+              {messageInfo.text}
+            </div>
+          )}
 
           {loading && <p style={{ padding: "20px", textAlign: "center" }}>Đang tải dữ liệu...</p>}
           {error && <p style={{ padding: "20px", textAlign: "center", color: "red" }}>Lỗi: {error}</p>}
@@ -175,8 +292,18 @@ export default function RestaurantsPage() {
                       </span>
                     </td>
                     <td>
-                      <button className="dashboard-action-btn dashboard-action-btn-edit">Sửa</button>
-                      <button className="dashboard-action-btn dashboard-action-btn-delete">Xóa</button>
+                      <button
+                        className="dashboard-action-btn dashboard-action-btn-edit"
+                        onClick={() => openEditModal(restaurant)}
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        className="dashboard-action-btn dashboard-action-btn-delete"
+                        onClick={() => handleDelete(restaurant.id)}
+                      >
+                        Xóa
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -189,38 +316,77 @@ export default function RestaurantsPage() {
           <div className="dashboard-modal-overlay" onClick={() => setShowModal(false)}>
             <div className="dashboard-modal" onClick={(e) => e.stopPropagation()}>
               <div className="dashboard-modal-header">
-                <h2 className="dashboard-modal-title">Thêm nhà hàng mới</h2>
+                <h2 className="dashboard-modal-title">{editingId ? "Sửa nhà hàng" : "Thêm nhà hàng mới"}</h2>
                 <button className="dashboard-modal-close" onClick={() => setShowModal(false)}>
                   ×
                 </button>
               </div>
-              <form>
+              <form onSubmit={handleSubmit}>
                 <div className="dashboard-form-group">
                   <label className="dashboard-form-label">Tên nhà hàng</label>
-                  <input type="text" className="dashboard-form-input" placeholder="Nhập tên nhà hàng" />
+                  <input
+                    type="text"
+                    name="name"
+                    className="dashboard-form-input"
+                    placeholder="Nhập tên nhà hàng"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    required
+                  />
                 </div>
                 <div className="dashboard-form-group">
                   <label className="dashboard-form-label">Chủ quán</label>
-                  <input type="text" className="dashboard-form-input" placeholder="Nhập tên chủ quán" />
+                  <input
+                    type="text"
+                    name="ownerName"
+                    className="dashboard-form-input"
+                    placeholder="Nhập tên chủ quán"
+                    value={formData.ownerName}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 <div className="dashboard-form-group">
                   <label className="dashboard-form-label">Địa chỉ</label>
-                  <input type="text" className="dashboard-form-input" placeholder="Nhập địa chỉ" />
+                  <input
+                    type="text"
+                    name="address"
+                    className="dashboard-form-input"
+                    placeholder="Nhập địa chỉ"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    required
+                  />
                 </div>
                 <div className="dashboard-form-group">
                   <label className="dashboard-form-label">Số điện thoại</label>
-                  <input type="tel" className="dashboard-form-input" placeholder="Nhập số điện thoại" />
+                  <input
+                    type="tel"
+                    name="phoneNumber"
+                    className="dashboard-form-input"
+                    placeholder="Nhập số điện thoại"
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 <div className="dashboard-form-group">
                   <label className="dashboard-form-label">Email</label>
-                  <input type="email" className="dashboard-form-input" placeholder="Nhập email" />
+                  <input
+                    type="email"
+                    name="email"
+                    className="dashboard-form-input"
+                    placeholder="Nhập email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                  />
                 </div>
               </form>
               <div className="dashboard-modal-footer">
                 <button className="dashboard-btn dashboard-btn-secondary" onClick={() => setShowModal(false)}>
                   Hủy
                 </button>
-                <button className="dashboard-btn dashboard-btn-primary">Thêm nhà hàng</button>
+                <button className="dashboard-btn dashboard-btn-primary" onClick={handleSubmit}>
+                  {editingId ? "Cập nhật" : "Thêm nhà hàng"}
+                </button>
               </div>
             </div>
           </div>

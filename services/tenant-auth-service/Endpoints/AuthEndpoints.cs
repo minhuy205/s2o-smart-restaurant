@@ -349,10 +349,12 @@ public static class AuthEndpoints
                                 name = t.Name,
                                 address = t.Address,
                                 phoneNumber = owner != null ? owner.PhoneNumber : t.PhoneNumber,
+                                email = t.Email,
                                 logoUrl = t.LogoUrl,
                                 ownerName = owner != null ? owner.FullName : t.OwnerName,
                                 isActive = t.IsActive,
-                                createdAt = t.CreatedAt
+                                createdAt = t.CreatedAt,
+                                updatedAt = t.UpdatedAt
                             };
 
                 var tenants = limit.HasValue && limit.Value > 0 ? await query.Take(limit.Value).ToListAsync() : await query.ToListAsync();
@@ -384,6 +386,128 @@ public static class AuthEndpoints
 
                 var customers = limit.HasValue && limit.Value > 0 ? await query.Take(limit.Value).ToListAsync() : await query.ToListAsync();
                 return Results.Ok(customers);
+            }
+            catch (Exception ex) { return Results.Problem($"Lỗi: {ex.Message}"); }
+        });
+
+        // ==========================================
+        // 7. API ADMIN - THÊM NHÀ HÀNG MỚI
+        // ==========================================
+        app.MapPost("/api/admin/tenants", async (AuthDbContext db, HttpContext context, UpdateTenantRequest request) =>
+        {
+            try 
+            {
+                if (!CheckAdminRole(context)) return Results.Json(new { message = "Forbidden" }, statusCode: 403);
+
+                var newTenant = new Tenant
+                {
+                    Name = request.Name ?? "Nhà hàng mới",
+                    Address = request.Address ?? "",
+                    PhoneNumber = request.PhoneNumber ?? "",
+                    Email = request.Email ?? "",
+                    OwnerName = request.OwnerName ?? "",
+                    LogoUrl = request.LogoUrl,
+                    IsActive = request.IsActive ?? true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                db.Tenants.Add(newTenant);
+                await db.SaveChangesAsync();
+
+                return Results.Ok(new { success = true, message = "Thêm nhà hàng thành công", id = newTenant.Id });
+            }
+            catch (Exception ex) { return Results.Problem($"Lỗi: {ex.Message}"); }
+        });
+
+        // ==========================================
+        // 8. API ADMIN - CẬP NHẬT NHÀ HÀNG
+        // ==========================================
+        app.MapPut("/api/admin/tenants/{id:int}", async (AuthDbContext db, HttpContext context, int id, UpdateTenantRequest request) =>
+        {
+            try 
+            {
+                if (!CheckAdminRole(context)) return Results.Json(new { message = "Forbidden" }, statusCode: 403);
+
+                var tenant = await db.Tenants.FindAsync(id);
+                if (tenant == null) return Results.NotFound(new { success = false, message = "Nhà hàng không tồn tại" });
+
+                // Cập nhật các field
+                if (!string.IsNullOrEmpty(request.Name)) tenant.Name = request.Name;
+                if (!string.IsNullOrEmpty(request.Address)) tenant.Address = request.Address;
+                if (!string.IsNullOrEmpty(request.PhoneNumber)) tenant.PhoneNumber = request.PhoneNumber;
+                if (!string.IsNullOrEmpty(request.Email)) tenant.Email = request.Email;
+                if (!string.IsNullOrEmpty(request.OwnerName)) tenant.OwnerName = request.OwnerName;
+                if (!string.IsNullOrEmpty(request.LogoUrl)) tenant.LogoUrl = request.LogoUrl;
+                if (request.IsActive.HasValue) tenant.IsActive = request.IsActive.Value;
+                tenant.UpdatedAt = DateTime.UtcNow;
+
+                await db.SaveChangesAsync();
+
+                return Results.Ok(new { success = true, message = "Cập nhật nhà hàng thành công" });
+            }
+            catch (Exception ex) { return Results.Problem($"Lỗi: {ex.Message}"); }
+        });
+
+        // ==========================================
+        // 9. API ADMIN - XÓA NHÀ HÀNG
+        // ==========================================
+        app.MapDelete("/api/admin/tenants/{id:int}", async (AuthDbContext db, HttpContext context, int id) =>
+        {
+            try 
+            {
+                if (!CheckAdminRole(context)) return Results.Json(new { message = "Forbidden" }, statusCode: 403);
+
+                var tenant = await db.Tenants.FindAsync(id);
+                if (tenant == null) return Results.NotFound(new { success = false, message = "Nhà hàng không tồn tại" });
+
+                // Xóa (hoặc gỡ liên kết) các user thuộc tenant để tránh lỗi FK
+                var users = await db.Users.Where(u => u.TenantId == id).ToListAsync();
+                if (users.Count > 0)
+                {
+                    db.Users.RemoveRange(users);
+                }
+
+                db.Tenants.Remove(tenant);
+                await db.SaveChangesAsync();
+
+                return Results.Ok(new { success = true, message = "Xóa nhà hàng thành công" });
+            }
+            catch (Exception ex) { return Results.Problem($"Lỗi: {ex.Message}"); }
+        });
+
+        // ==========================================
+        // 10. API ADMIN - THỐNG KÊ TỔNG QUAN
+        // ==========================================
+        app.MapGet("/api/admin/statistics", async (AuthDbContext db, HttpContext context) =>
+        {
+            try 
+            {
+                if (!CheckAdminRole(context)) return Results.Json(new { message = "Forbidden" }, statusCode: 403);
+
+                var totalRestaurants = await db.Tenants.CountAsync();
+                var activeRestaurants = await db.Tenants.CountAsync(t => t.IsActive);
+                var totalUsers = await db.Users.CountAsync(u => u.Role != "Admin");
+                var totalCustomers = await db.Users.CountAsync(u => u.Role == "Customer");
+                var totalOwners = await db.Users.CountAsync(u => u.Role == "Owner");
+
+                // Thống kê nhà hàng mới trong tháng
+                var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var restaurantsThisMonth = await db.Tenants.CountAsync(t => t.CreatedAt >= startOfMonth);
+
+                // Thống kê người dùng mới trong tháng
+                var usersThisMonth = await db.Users.CountAsync(u => u.CreatedAt >= startOfMonth && u.Role != "Admin");
+
+                return Results.Ok(new 
+                {
+                    totalRestaurants = totalRestaurants,
+                    activeRestaurants = activeRestaurants,
+                    totalUsers = totalUsers,
+                    totalCustomers = totalCustomers,
+                    totalOwners = totalOwners,
+                    restaurantsThisMonth = restaurantsThisMonth,
+                    usersThisMonth = usersThisMonth,
+                    timestamp = DateTime.UtcNow
+                });
             }
             catch (Exception ex) { return Results.Problem($"Lỗi: {ex.Message}"); }
         });
