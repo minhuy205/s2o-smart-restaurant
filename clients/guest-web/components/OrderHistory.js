@@ -1,10 +1,16 @@
+// clients/guest-web/components/OrderHistory.js
 import React, { useState, useEffect } from 'react';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
 
 const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
     const [orders, setOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    
+    // State cho chức năng Gọi thanh toán
+    const [isRequestingPayment, setIsRequestingPayment] = useState(false);
+    const [requestSuccess, setRequestSuccess] = useState(false);
 
+    // --- 1. LẤY DỮ LIỆU LỊCH SỬ ---
     const fetchHistory = async () => {
         if (!tenantId) return;
         setIsLoading(true);
@@ -13,20 +19,13 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
             if (data && Array.isArray(data)) {
                 const myOrders = data
                     .filter(o => {
-                        // 1. Phải đúng bàn hiện tại
                         const isSameTable = o.tableName && tableId && o.tableName.includes(tableId);
-                        
-                        // 2. LOGIC ĐÃ SỬA: 
-                        // - Giữ lại: Pending, Confirmed, Cooking, Preparing, Served, Completed
-                        // - Chỉ ẩn: Paid (Đã trả tiền), Cancelled, Rejected (Bị hủy)
-                        const status = (o.status || '').toString(); // Đảm bảo status là string
+                        const status = (o.status || '').toString();
+                        // Chỉ ẩn những đơn đã trả tiền hoặc huỷ, còn lại hiện hết
                         const isHidden = ['Paid', 'Cancelled', 'Rejected'].includes(status);
-                        
                         return isSameTable && !isHidden;
                     })
-                    // Sắp xếp: Mới nhất lên đầu
-                    // Fallback 'createdDate' cho các version cũ, 'createdAt' cho version mới
-                    .sort((a, b) => new Date(b.createdAt || b.createdDate || 0) - new Date(a.createdAt || a.createdDate || 0));
+                    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
                 
                 setOrders(myOrders);
             }
@@ -39,56 +38,72 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
 
     useEffect(() => {
         fetchHistory();
-        
-        // Tự động refresh mỗi 10s để khách thấy món vừa nấu xong
-        const interval = setInterval(fetchHistory, 10000);
+        const interval = setInterval(fetchHistory, 10000); // Tự động refresh mỗi 10s
         return () => clearInterval(interval);
     }, [tenantId, tableId]);
 
-    // Helper render trạng thái & màu sắc
+    // --- 2. XỬ LÝ GỌI THANH TOÁN ---
+    const handleRequestPayment = async () => {
+        if (!confirm("Bạn muốn gọi nhân viên đến thanh toán?")) return;
+        setIsRequestingPayment(true);
+        
+        try {
+            // Lấy ID số của bàn (VD: "Table 1" -> 1) để gọi API
+            let numericTableId = tableId.replace(/\D/g, ''); 
+            
+            // BƯỚC 1: Lấy thông tin bàn hiện tại để giữ lại currentOrderId
+            const tables = await fetchAPI(SERVICES.MENU, `/api/tables?tenantId=${tenantId}`);
+            const currentTable = tables ? tables.find(t => t.id == numericTableId) : null;
+            
+            if (currentTable) {
+                // BƯỚC 2: Gọi đúng API cập nhật trạng thái
+                await fetchAPI(SERVICES.MENU, `/api/tables/${numericTableId}/status`, { 
+                    method: 'PUT', 
+                    body: JSON.stringify({ 
+                        status: 'PaymentRequested', // <-- Dashboard sẽ hiện màu đỏ
+                        currentOrderId: currentTable.currentOrderId // Giữ nguyên ID đơn hàng
+                    }) 
+                });
+
+                setRequestSuccess(true);
+                // Ẩn thông báo thành công sau 5s
+                setTimeout(() => setRequestSuccess(false), 5000);
+            } else {
+                alert("Không tìm thấy thông tin bàn. Vui lòng gọi trực tiếp.");
+            }
+
+        } catch (error) {
+            console.error("Lỗi gọi thanh toán:", error);
+            alert("Lỗi kết nối. Vui lòng thử lại.");
+        } finally {
+            setIsRequestingPayment(false);
+        }
+    };
+
+    // --- 3. HELPERS ---
     const getStatusInfo = (status) => {
         const s = (status || '').toLowerCase();
-        
-        // 🟢 Đã thanh toán
         if (s === 'paid') return { text: 'Đã thanh toán', bg: '#ECFDF5', color: '#059669', border: '#D1FAE5' };
-        
-        // 🔵 Đã xong / Đã lên món
         if (s === 'completed' || s === 'served') return { text: 'Đã lên món', bg: '#EFF6FF', color: '#2563EB', border: '#DBEAFE' };
-        
-        // 🟠 Đang làm
         if (s === 'cooking' || s === 'preparing' || s === 'confirmed') return { text: 'Đang nấu', bg: '#FFF7ED', color: '#EA580C', border: '#FFEDD5' };
-        
-        // 🔴 Đã hủy
         if (s === 'cancelled' || s === 'rejected') return { text: 'Đã hủy', bg: '#FEF2F2', color: '#DC2626', border: '#FEE2E2' };
-        
-        // ⚪ Mới đặt
         return { text: 'Chờ xác nhận', bg: '#F3F4F6', color: '#4B5563', border: '#E5E7EB' };
     };
 
-    // --- SỬA LOGIC HIỂN THỊ GIỜ (Force Timezone VN) ---
     const formatTime = (dateStr) => {
         if(!dateStr) return '';
         const d = new Date(dateStr);
-        
-        // Ép buộc hiển thị theo giờ Việt Nam (Asia/Ho_Chi_Minh)
-        // Bất kể Backend trả về UTC hay điện thoại khách ở múi giờ khác
         return d.toLocaleTimeString('vi-VN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            day: '2-digit', 
-            month: '2-digit',
-            hour12: false,
-            timeZone: 'Asia/Ho_Chi_Minh' 
-        }).replace(',', ' •');
+            hour: '2-digit', minute: '2-digit', hour12: false
+        });
     }
-    // --------------------------------------------------
 
-    // Tính tổng tạm tính của các đơn đang hiện
     const grandTotal = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
 
     return (
         <div className="history-overlay" onClick={onClose}>
             <div className="history-modal" onClick={e => e.stopPropagation()}>
+                {/* HEADER */}
                 <div className="history-header">
                     <div>
                         <h3 className="history-title">Hóa đơn tạm tính</h3>
@@ -97,26 +112,27 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                     <button className="btn-close-dialog" onClick={onClose}>✕</button>
                 </div>
                 
+                {/* CONTENT */}
                 <div className="history-content">
                     {isLoading ? ( 
                         <div className="empty-history">Đang cập nhật...</div> 
                     ) : orders.length === 0 ? (
                         <div className="empty-history">
                             <div style={{fontSize:40, marginBottom: 10}}>✨</div>
-                            <p>Bàn trống / Đã thanh toán xong.</p>
+                            <p>Chưa có đơn hàng nào.</p>
                             <p style={{fontSize: 12, color: '#999', marginTop: 5}}>Bạn có thể bắt đầu gọi món mới.</p>
                         </div>
                     ) : (
                         <>
+                            {/* DANH SÁCH MÓN */}
                             {orders.map((order) => {
                                 const st = getStatusInfo(order.status);
-                                // Ưu tiên dùng createdAt từ Backend mới, fallback về createdDate nếu cũ
                                 const displayDate = order.createdAt || order.createdDate;
 
                                 return (
                                     <div key={order.id} className="order-card-pro">
                                         <div className="order-header-row">
-                                            <span className="order-time">🕒 {formatTime(displayDate)}</span>
+                                            <span className="order-time">Đơn #{order.id} • {formatTime(displayDate)}</span>
                                             <span className="status-badge" style={{backgroundColor:st.bg, color:st.color, border:`1px solid ${st.border}`}}>
                                                 {st.text}
                                             </span>
@@ -140,25 +156,41 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                                 );
                             })}
                             
-                            {/* Tổng cộng tất cả các đơn chưa thanh toán */}
+                            {/* TỔNG TIỀN */}
                             <div className="history-grand-total">
                                 <span>Tổng cộng cần thanh toán:</span>
                                 <span className="grand-price">{grandTotal.toLocaleString()} đ</span>
                             </div>
+
+                            {/* --- NÚT GỌI THANH TOÁN --- */}
+                            {grandTotal > 0 && (
+                                <div style={{marginTop: 15}}>
+                                    {!requestSuccess ? (
+                                        <button 
+                                            className="btn-request-payment"
+                                            onClick={handleRequestPayment}
+                                            disabled={isRequestingPayment}
+                                        >
+                                            {isRequestingPayment ? 'Đang gửi yêu cầu...' : '🔔 Gọi nhân viên thanh toán'}
+                                        </button>
+                                    ) : (
+                                        <div className="alert-success">
+                                            ✅ Đã gửi yêu cầu! Nhân viên sẽ đến ngay.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
                 
+                {/* FOOTER REFRESH */}
                 <div style={{padding: '10px 15px', borderTop: '1px solid #eee', background: 'white'}}>
-                    <button 
-                        onClick={fetchHistory}
-                        className="btn-refresh"
-                    >
-                        🔄 Làm mới
-                    </button>
+                    <button onClick={fetchHistory} className="btn-refresh">🔄 Làm mới</button>
                 </div>
             </div>
             
+            {/* CSS STYLE */}
             <style jsx>{`
                 .history-overlay {
                     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -209,6 +241,35 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                     border: 1px solid #FFEDD5; color: #C2410C; font-weight: 700;
                 }
                 .grand-price { font-size: 18px; color: #EA580C; }
+
+                /* BUTTON GỌI THANH TOÁN */
+                .btn-request-payment {
+                    width: 100%;
+                    padding: 14px;
+                    background: #4F46E5;
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    font-size: 15px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25);
+                    transition: all 0.2s;
+                }
+                .btn-request-payment:active { transform: scale(0.98); }
+                .btn-request-payment:disabled { background: #A5B4FC; cursor: not-allowed; }
+
+                .alert-success {
+                    padding: 14px;
+                    background: #ECFDF5;
+                    color: #059669;
+                    border: 1px solid #D1FAE5;
+                    border-radius: 12px;
+                    text-align: center;
+                    font-weight: 600;
+                    font-size: 14px;
+                    animation: fadeIn 0.3s;
+                }
 
                 .btn-refresh {
                     width: 100%; padding: 12px; background: #F3F4F6; border: none; 

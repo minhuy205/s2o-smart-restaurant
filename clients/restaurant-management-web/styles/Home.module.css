@@ -121,3 +121,55 @@
 .modalHeader { font-size: 22px; font-weight: 800; margin-bottom: 25px; color: #1E293B; text-align: center; }
 .btnSave { background: #2563EB; color: white; padding: 14px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; width: 100%; margin-top: 15px; }
 .btnCancel { background: #F1F5F9; color: #64748B; padding: 14px; border-radius: 12px; border: none; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px; }
+
+.dashboardContent {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Chia cột: Menu 2 phần, Thông báo 1 phần */
+    gap: 30px;
+}
+@media (max-width: 900px) {
+    .dashboardContent { grid-template-columns: 1fr; }
+}
+
+.notificationPanel {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    height: fit-content;
+    max-height: 600px;
+    overflow-y: auto;
+}
+.panelTitle { margin-top: 0; margin-bottom: 20px; font-size: 18px; color: #111827; border-bottom: 2px solid #F3F4F6; padding-bottom: 10px; }
+
+.notiList { display: flex; flex-direction: column; gap: 12px; }
+.emptyNoti { text-align: center; color: #9CA3AF; font-style: italic; margin-top: 30px; }
+
+.notiItem {
+    padding: 12px;
+    border-radius: 12px;
+    border-left: 4px solid #E5E7EB;
+    background: #F9FAFB;
+    animation: slideIn 0.3s ease;
+}
+@keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+.notiHeader { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.notiTitle { font-weight: 700; font-size: 14px; }
+.notiTime { font-size: 11px; color: #6B7280; }
+.notiMsg { font-size: 13px; color: #374151; }
+
+/* MÀU SẮC CHO TỪNG LOẠI THÔNG BÁO */
+.notiPAYMENT { border-left-color: #EF4444; background: #FEF2F2; }
+.notiPAYMENT .notiTitle { color: #DC2626; }
+
+.notiNEW { border-left-color: #3B82F6; background: #EFF6FF; }
+.notiNEW .notiTitle { color: #2563EB; }
+
+.notiCOOKING { border-left-color: #F59E0B; background: #FFFBEB; }
+.notiCOOKING .notiTitle { color: #D97706; }
+
+.notiDONE { border-left-color: #10B981; background: #ECFDF5; }
+.notiDONE .notiTitle { color: #059669; }
+
+.notiPAID { border-left-color: #6B7280; background: #F3F4F6; opacity: 0.8; }
