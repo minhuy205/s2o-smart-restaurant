@@ -4,6 +4,8 @@ import { fetchAPI, SERVICES } from '../utils/apiConfig';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import styles from '../styles/Tables.module.css';
+// Import thư viện QR
+import { QRCodeCanvas } from 'qrcode.react';
 
 export default function TablesManagement() {
   const router = useRouter();
@@ -13,7 +15,11 @@ export default function TablesManagement() {
   // State cho Modal (Thêm & Sửa)
   const [showModal, setShowModal] = useState(false);
   const [tableNameInput, setTableNameInput] = useState('');
-  const [editingTableId, setEditingTableId] = useState(null); // ID bàn đang sửa (null nếu là thêm mới)
+  const [editingTableId, setEditingTableId] = useState(null);
+
+  // State cho Modal QR
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrData, setQrData] = useState(null); // Lưu thông tin bàn đang xem QR
 
   useEffect(() => {
     const userStr = localStorage.getItem('s2o_user');
@@ -41,34 +47,41 @@ export default function TablesManagement() {
 
   // --- MỞ MODAL SỬA ---
   const openEditModal = (e, table) => {
-      e.stopPropagation(); // Chặn click vào thẻ bàn
+      e.stopPropagation();
       setTableNameInput(table.name);
       setEditingTableId(table.id);
       setShowModal(true);
+  };
+
+  // --- MỞ MODAL QR ---
+  const openQrModal = (e, table) => {
+      e.stopPropagation();
+      // Link Guest Web: Bạn có thể thay đổi domain nếu deploy thật
+      const link = `http://localhost:3000/?tenantId=${currentUser.tenantId}&tableId=${table.id}`;
+      setQrData({
+          name: table.name,
+          link: link
+      });
+      setShowQrModal(true);
   };
 
   // --- XỬ LÝ LƯU (Dùng chung cho Thêm & Sửa) ---
   const handleSaveTable = async () => {
     if (!tableNameInput.trim()) return alert("Vui lòng nhập tên bàn!");
     
-    // Payload chung
     const payload = {
       name: tableNameInput,
       tenantId: currentUser.tenantId,
-      status: "Available" // Mặc định nếu thêm mới, nếu sửa API backend thường sẽ giữ nguyên status cũ hoặc mình không gửi trường này
+      status: "Available"
     };
 
     let success;
     if (editingTableId) {
-        // --- LOGIC SỬA (PUT) ---
-        // Lưu ý: Backend cần hỗ trợ method PUT tại /api/tables/{id}
-        // Nếu backend yêu cầu giữ nguyên status cũ, hãy truyền status hiện tại vào payload
         success = await fetchAPI(SERVICES.MENU, `/api/tables/${editingTableId}`, { 
             method: 'PUT', 
-            body: JSON.stringify({ name: tableNameInput, tenantId: currentUser.tenantId }) // Chỉ gửi tên cần sửa
+            body: JSON.stringify({ name: tableNameInput, tenantId: currentUser.tenantId })
         });
     } else {
-        // --- LOGIC THÊM MỚI (POST) ---
         success = await fetchAPI(SERVICES.MENU, '/api/tables', { 
             method: 'POST', 
             body: JSON.stringify(payload) 
@@ -85,7 +98,6 @@ export default function TablesManagement() {
     }
   };
 
-  // --- XỬ LÝ XÓA BÀN ---
   const handleDelete = async (e, id) => {
     e.stopPropagation();
     if (confirm("Bạn có chắc muốn xoá bàn này?")) {
@@ -94,7 +106,6 @@ export default function TablesManagement() {
     }
   };
 
-  // --- XỬ LÝ DỌN BÀN ---
   const handleClearTable = async (e, id) => {
     e.stopPropagation();
     if (confirm("Xác nhận bàn này đã dọn xong?")) {
@@ -143,23 +154,28 @@ export default function TablesManagement() {
 
               {/* Footer hành động */}
               <div className={styles.cardActions}>
-                  {/* Nút 1: Dọn bàn (nếu có khách) hoặc Gọi món (nếu trống) */}
+                  {/* Nút 1: Dọn hoặc Menu */}
                   {isOccupied ? (
-                      <button onClick={(e) => handleClearTable(e, table.id)} className={styles.actionBtn}>
+                      <button onClick={(e) => handleClearTable(e, table.id)} className={styles.actionBtn} title="Dọn bàn">
                           🧹 Dọn
                       </button>
                   ) : (
-                      <button className={styles.actionBtn}>
+                      <button className={styles.actionBtn} title="Gọi món">
                           + Menu
                       </button>
                   )}
 
-                  {/* Nút 2: Sửa tên bàn (Luôn hiện) */}
+                  {/* Nút 2: Xem QR (MỚI) */}
+                  <button onClick={(e) => openQrModal(e, table)} className={styles.actionBtn} title="Lấy mã QR">
+                      🏁 QR
+                  </button>
+
+                  {/* Nút 3: Sửa */}
                   <button onClick={(e) => openEditModal(e, table)} className={`${styles.actionBtn} ${styles.edit}`} title="Sửa tên bàn">
                       ✎ Sửa
                   </button>
                   
-                  {/* Nút 3: Xóa bàn (Chỉ hiện khi bàn trống) */}
+                  {/* Nút 4: Xóa */}
                   {!isOccupied && (
                       <button onClick={(e) => handleDelete(e, table.id)} className={`${styles.actionBtn} ${styles.delete}`} title="Xoá bàn">
                           🗑 Xoá
@@ -195,6 +211,39 @@ export default function TablesManagement() {
 
                 <button onClick={handleSaveTable} className={styles.btnSave}>
                     {editingTableId ? 'Lưu Thay Đổi' : 'Tạo Bàn Mới'}
+                </button>
+            </div>
+        </div>
+      )}
+
+      {/* MODAL XEM QR CODE (MỚI) */}
+      {showQrModal && qrData && (
+        <div className={styles.modalOverlay} onClick={() => setShowQrModal(false)}>
+            <div className={styles.formModal} onClick={(e) => e.stopPropagation()} style={{textAlign: 'center', width: '350px'}}>
+                <div className={styles.modalHeader}>
+                    <h3 className={styles.modalTitle}>Mã QR - {qrData.name}</h3>
+                    <button onClick={() => setShowQrModal(false)} className={styles.btnCloseModal}>&times;</button>
+                </div>
+                
+                <div style={{ padding: '20px', background: '#f9fafb', borderRadius: '12px', display: 'inline-block', marginBottom: '20px' }}>
+                    <QRCodeCanvas 
+                        value={qrData.link} 
+                        size={200}
+                        level={"H"} // Mức độ sửa lỗi cao (High)
+                        includeMargin={true}
+                    />
+                </div>
+                
+                <p style={{fontSize: '13px', color: '#6B7280', wordBreak: 'break-all', marginBottom: '20px'}}>
+                   {qrData.link}
+                </p>
+
+                <button 
+                    onClick={() => setShowQrModal(false)} 
+                    className={styles.btnSave}
+                    style={{backgroundColor: '#4F46E5'}}
+                >
+                    Đóng
                 </button>
             </div>
         </div>

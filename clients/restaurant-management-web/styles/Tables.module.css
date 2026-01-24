@@ -83,7 +83,7 @@
 .card {
     background: white;
     border-radius: 16px;
-    height: 170px; /* Tăng chiều cao xíu để chứa đủ nút */
+    height: 180px; /* Tăng chiều cao để chứa nút */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -155,22 +155,26 @@
     flex: 1;
     background: transparent;
     border: none;
-    padding: 12px;
+    padding: 10px 5px;
     font-size: 13px;
     font-weight: 600;
     color: #6B7280;
     cursor: pointer;
     transition: background 0.2s;
     font-family: 'Inter', sans-serif;
-    border-right: 1px solid #f3f4f6; /* Vách ngăn giữa các nút */
+    border-right: 1px solid #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
 }
 .actionBtn:last-child { border-right: none; }
-
 .actionBtn:hover { background-color: #F3F4F6; color: #111827; }
 
 /* Style riêng cho từng nút */
-.actionBtn.edit:hover { background-color: #EFF6FF; color: #2563EB; } /* Xanh dương khi hover Sửa */
-.actionBtn.delete:hover { background-color: #FEF2F2; color: #EF4444; } /* Đỏ khi hover Xóa */
+.actionBtn.edit:hover { background-color: #EFF6FF; color: #2563EB; }
+.actionBtn.delete:hover { background-color: #FEF2F2; color: #EF4444; }
 
 /* --- MODAL FORM --- */
 .modalOverlay {
@@ -205,7 +209,8 @@
     margin-bottom: 20px;
 }
 .modalTitle { font-size: 20px; font-weight: 800; margin: 0; }
-.btnCloseModal { background: none; border: none; font-size: 24px; cursor: pointer; color: #9CA3AF; }
+.btnCloseModal { background: none; border: none; font-size: 24px; cursor: pointer; color: #9CA3AF; transition: color 0.2s; }
+.btnCloseModal:hover { color: #111827; }
 
 .formGroup { margin-bottom: 20px; }
 .label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: #374151; }
@@ -218,6 +223,7 @@
     outline: none;
     box-sizing: border-box;
     font-family: 'Inter', sans-serif;
+    transition: all 0.2s;
 }
 .input:focus { border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
 
@@ -231,5 +237,54 @@
     font-weight: 700;
     font-size: 16px;
     cursor: pointer;
+    transition: background 0.2s;
 }
 .btnSave:hover { background: #059669; }
+
+/* --- QR CODE MODAL STYLES (Mới thêm) --- */
+.qrModal {
+    text-align: center;
+    width: 360px; /* Cố định chiều rộng đẹp hơn */
+}
+
+.qrWrapper {
+    padding: 24px;
+    background-color: #F9FAFB;
+    border-radius: 16px;
+    display: inline-flex; /* Đổi thành flex để căn giữa chuẩn */
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    border: 1px solid #E5E7EB;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05); /* Hiệu ứng chìm nhẹ */
+}
+
+.qrLinkBox {
+    background: #F3F4F6;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px dashed #D1D5DB;
+    margin-bottom: 24px;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.qrLinkText {
+    font-size: 12px;
+    color: #4B5563;
+    font-family: monospace; /* Font chữ giống code */
+    word-break: break-all;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.btnCloseQr {
+    background-color: #4F46E5 !important; /* Màu xanh Indigo khác với nút Lưu màu xanh lá */
+    box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+}
+.btnCloseQr:hover {
+    background-color: #4338ca !important;
+    transform: translateY(-1px);
+}
