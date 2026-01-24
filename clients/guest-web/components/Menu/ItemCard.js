@@ -37,9 +37,6 @@ const ItemCard = ({ item, onClick, onAdd }) => {
                         {getStatusBadge(item.status)}
                     </div>
                 )}
-
-                {/* Tag Yêu Thích */}
-                {item.category && <div className="item-tag-fav">Yêu thích</div>}
             </div>
            
             <div className="item-content">

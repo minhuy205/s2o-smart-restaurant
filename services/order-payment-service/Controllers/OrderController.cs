@@ -33,7 +33,7 @@ namespace OrderPaymentService.Controllers
             _logger = logger;
         }
 
-        // 1. GET: Lấy danh sách đơn
+        // 1. GET: Lấy danh sách đơn (Dùng cho Admin/Bếp để hiển thị tất cả) -> KHÔNG ĐỔI
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Order>>> GetOrders([FromQuery] int tenantId)
         {
@@ -46,7 +46,7 @@ namespace OrderPaymentService.Controllers
                 .ToListAsync();
         }
 
-        // 2. POST: Tạo đơn hàng
+        // 2. POST: Tạo đơn hàng (Dùng cho Mobile/Guest Web đặt món) -> KHÔNG ĐỔI
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto request)
         {
@@ -55,7 +55,6 @@ namespace OrderPaymentService.Controllers
 
             if (request.TenantId <= 0) return BadRequest("Invalid TenantId");
 
-            // A. Chuẩn bị dữ liệu Order
             var newOrder = new Order
             {
                 TenantId = request.TenantId,
@@ -63,13 +62,8 @@ namespace OrderPaymentService.Controllers
                 TableName = request.TableName,
                 TotalAmount = request.TotalAmount,
                 Status = "Pending",
-                
-                // Giờ Việt Nam (UTC + 7)
                 CreatedAt = DateTime.UtcNow, 
-                
-                // Lưu Token để dùng sau này (báo món xong)
                 DeviceToken = request.DeviceToken, 
-
                 Items = new List<OrderItem>()
             };
 
@@ -87,7 +81,6 @@ namespace OrderPaymentService.Controllers
                 }
             }
 
-            // B. Lưu vào Database (BẮT BUỘC PHẢI ĐỢI XONG)
             try 
             {
                 _context.Orders.Add(newOrder);
@@ -99,9 +92,7 @@ namespace OrderPaymentService.Controllers
                 return StatusCode(500, "Lỗi lưu đơn hàng: " + ex.Message);
             }
 
-            // --- PHẦN CHẠY NGẦM (FIRE AND FORGET) ĐỂ TRÁNH LAG ---
-
-            // C. Gửi thông báo Firebase (Chạy ngầm)
+            // Gửi thông báo (Chạy ngầm)
             if (!string.IsNullOrEmpty(newOrder.DeviceToken))
             {
                 _ = _notificationService.SendNotificationAsync(
@@ -111,8 +102,7 @@ namespace OrderPaymentService.Controllers
                 );
             }
 
-            // D. Gửi sự kiện RabbitMQ (Chạy ngầm luôn cho chắc ăn)
-            // Dùng Task.Run để đẩy ra luồng riêng, không làm chậm API
+            // Gửi RabbitMQ (Chạy ngầm)
             _ = Task.Run(async () => 
             {
                 try 
@@ -133,11 +123,10 @@ namespace OrderPaymentService.Controllers
                 }
             });
 
-            // E. Trả về kết quả ngay lập tức
             return Ok(new { message = "Đặt món thành công", orderId = newOrder.Id });
         }
 
-        // 3. PUT: Cập nhật trạng thái
+        // 3. PUT: Cập nhật trạng thái (Dùng cho Bếp bấm "Xong món") -> KHÔNG ĐỔI
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromQuery] string status, [FromQuery] int tenantId)
         {
@@ -149,20 +138,46 @@ namespace OrderPaymentService.Controllers
             order.Status = status;
             await _context.SaveChangesAsync();
 
-            // LOGIC FIREBASE: Nếu xong món -> Bắn thông báo (Chạy ngầm)
             if (status == "Completed" && !string.IsNullOrEmpty(order.DeviceToken))
             {
                 string firstItemName = order.Items.FirstOrDefault()?.MenuItemName ?? "món ăn";
-                
-                // Fire & Forget
                 _ = _notificationService.SendOrderCompletedAsync(order.DeviceToken, order.Id, firstItemName);
             }
 
             return Ok(order);
         }
-    }
 
-    // --- DTO CLASSES ---
+        // 4. GET: Lấy chi tiết 1 đơn (Dùng cho Mobile kiểm tra trạng thái - Polling) -> MỚI THÊM
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Order>> GetOrder(int id)
+        {
+            var order = await _context.Orders
+                .Include(o => o.Items)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null) return NotFound();
+            
+            return Ok(order);
+        }
+
+        // 5. GET: Lấy lịch sử theo DeviceToken (Dùng cho Mobile load lại list) -> MỚI THÊM
+        [HttpGet("my-orders")]
+        public async Task<ActionResult<IEnumerable<Order>>> GetMyOrders([FromQuery] string deviceToken)
+        {
+            if (string.IsNullOrEmpty(deviceToken)) return BadRequest("Cần DeviceToken");
+
+            var orders = await _context.Orders
+                .Include(o => o.Items)
+                .Where(o => o.DeviceToken == deviceToken) // Lọc theo thiết bị của khách
+                .OrderByDescending(o => o.CreatedAt)      // Đơn mới nhất lên đầu
+                .ToListAsync();
+
+            return Ok(orders);
+        }
+
+    } // Kết thúc class Controller
+
+    // --- DTO ---
     public class CreateOrderDto
     {
         public int TenantId { get; set; }

@@ -6,6 +6,11 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Thư viện thông báo
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+
 // Firebase & Google
 import {
   signInWithCredential,
@@ -20,16 +25,34 @@ import { fetchAPI, SERVICES } from '../utils/apiConfig';
 
 WebBrowser.maybeCompleteAuthSession();
 
+// Cấu hình hiển thị thông báo
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 export default function LoginScreen({ navigation }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
-  // State đăng ký
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+
+  // --- 0. TỰ ĐỘNG LẤY DEVICE TOKEN ---
+  useEffect(() => {
+    registerForPushNotificationsAsync().then(token => {
+        if (token) {
+            console.log("🔥 Device Token:", token);
+            AsyncStorage.setItem('deviceToken', token);
+        }
+    });
+  }, []);
 
   // --- 1. GOOGLE LOGIN ---
   const [request, response, promptAsync] = Google.useAuthRequest({
@@ -54,26 +77,19 @@ export default function LoginScreen({ navigation }) {
     }
   }, [response]);
 
-  // --- 2. HÀM XỬ LÝ DỮ LIỆU & CHUYỂN TRANG (LOGIC MỚI) ---
+  // --- 2. XỬ LÝ ĐĂNG NHẬP THÀNH CÔNG ---
   const processLoginSuccess = async (apiResponse) => {
     try {
-      // apiResponse chứa: { success, user, tenants, token }
-      
       const user = apiResponse.user;
-      const tenants = apiResponse.tenants || []; // Đảm bảo không bị null
+      const tenants = apiResponse.tenants || [];
 
-      // 1. Lưu thông tin User vào bộ nhớ máy (để dùng sau này)
       await AsyncStorage.setItem('user', JSON.stringify(user));
-      
-      // 2. Nếu có Token (Login thường), lưu luôn token
       if (apiResponse.token) {
         await AsyncStorage.setItem('token', apiResponse.token);
       }
       
       Alert.alert("Xin chào", `Mừng quay lại, ${user.fullName || user.username}!`);
       
-      // 3. QUAN TRỌNG: Chuyển sang Home và KÈM THEO DỮ LIỆU (giống cách Web truyền props)
-      // Lúc này màn hình Home sẽ nhận được route.params.tenants
       navigation.replace('Home', { 
         user: user,
         tenants: tenants 
@@ -85,7 +101,7 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  // --- 3. LOGIN / REGISTER THƯỜNG (Gọi API Backend) ---
+  // --- 3. ĐĂNG NHẬP / ĐĂNG KÝ THƯỜNG ---
   const handleStandardAuth = async () => {
     if (!username || !password) {
       Alert.alert('Thông báo', 'Vui lòng nhập Tên đăng nhập và Mật khẩu');
@@ -112,15 +128,11 @@ export default function LoginScreen({ navigation }) {
         password: password
       };
 
-      console.log(`📡 Calling API: ${endpoint}`);
-
-      // Gọi Backend
       const data = await fetchAPI(SERVICES.AUTH, endpoint, {
         method: 'POST',
         body: JSON.stringify(payload),
       });
 
-      // Xử lý kết quả
       if (data && data.success) { 
         if (isRegistering) {
           Alert.alert("Thành công", "Đăng ký thành công! Vui lòng đăng nhập.");
@@ -129,7 +141,6 @@ export default function LoginScreen({ navigation }) {
           setPhone('');
           setPassword('');
         } else {
-          // Đăng nhập thành công -> Gọi hàm xử lý mới
           await processLoginSuccess(data); 
         }
       } else {
@@ -144,7 +155,7 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  // --- 4. GOOGLE SYNC ---
+  // --- 4. ĐỒNG BỘ GOOGLE ---
   const handleGoogleSync = async (firebaseUser) => {
     try {
       const payload = {
@@ -159,7 +170,6 @@ export default function LoginScreen({ navigation }) {
       });
       
       if (data && data.success) {
-        // Đồng bộ thành công -> Gọi hàm xử lý mới
         await processLoginSuccess(data);
       } else {
         Alert.alert("Lỗi", "Không đồng bộ được dữ liệu Google.");
@@ -208,6 +218,61 @@ export default function LoginScreen({ navigation }) {
       </ScrollView>
     </KeyboardAvoidingView>
   );
+}
+
+// 👇 HÀM ĐĂNG KÝ NHẬN THÔNG BÁO (ĐÃ FIX CHO WEB & SIMULATOR)
+async function registerForPushNotificationsAsync() {
+  let token;
+
+  // 1. Nếu là WEB -> Dùng Token Giả Lập (Tránh lỗi VAPID)
+  if (Platform.OS === 'web') {
+    console.log("⚠️ Web: Sử dụng Token giả lập.");
+    let webToken = await AsyncStorage.getItem('web_device_token');
+    if (!webToken) {
+        webToken = 'web-' + Math.random().toString(36).substring(7);
+        await AsyncStorage.setItem('web_device_token', webToken);
+    }
+    return webToken; 
+  }
+
+  // 2. Android
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+
+  // 3. Máy thật (Android/iOS)
+  if (Device.isDevice) {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    
+    if (finalStatus !== 'granted') {
+      console.log('❌ Không có quyền thông báo!');
+      return null;
+    }
+
+    try {
+        const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+        token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    } catch (e) {
+        console.log("❌ Lỗi lấy Push Token:", e);
+    }
+  } else {
+    // Máy ảo (Simulator)
+    console.log('⚠️ Simulator: Dùng Token giả.');
+    token = 'simulator-token-' + Math.random().toString(36).substring(7);
+  }
+
+  return token;
 }
 
 const styles = StyleSheet.create({
