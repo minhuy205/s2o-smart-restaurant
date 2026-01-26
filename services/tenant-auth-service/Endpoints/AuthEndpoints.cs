@@ -511,6 +511,32 @@ public static class AuthEndpoints
             }
             catch (Exception ex) { return Results.Problem($"Lỗi: {ex.Message}"); }
         });
+        // ==========================================
+// 11. API TÌM KIẾM NHÀ HÀNG (Dành cho Mobile)
+// ==========================================
+app.MapGet("/api/tenants/search", async (AuthDbContext db, string query) =>
+{
+    if (string.IsNullOrWhiteSpace(query))
+    {
+        return Results.BadRequest(new { success = false, message = "Từ khóa tìm kiếm không được để trống" });
+    }
+
+    var normalizedQuery = query.ToLower();
+
+    var results = await db.Tenants
+        .Where(t => t.IsActive && 
+                   (t.Name.ToLower().Contains(normalizedQuery) || 
+                    t.Address.ToLower().Contains(normalizedQuery)))
+        .Select(t => new { 
+            id = t.Id, 
+            name = t.Name, 
+            address = t.Address, 
+            logoUrl = t.LogoUrl 
+        })
+        .ToListAsync();
+
+    return Results.Ok(results);
+});
     }
 
     // --- HÀM HỖ TRỢ ---

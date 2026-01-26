@@ -21,7 +21,11 @@ export const SERVICES = {
     GATEWAY: `http://${HOST}:8000` // API Gateway (Nếu dùng)
 };
 
-
+export const searchTenants = async (query) => {
+    return await fetchAPI(SERVICES.AUTH, `/tenants/search?query=${query}`, {
+        method: 'GET',
+    });
+};
 // Hàm gọi API chung (Đã tối ưu)
 export const fetchAPI = async (serviceUrl, endpoint, options = {}) => {
     const fullUrl = `${serviceUrl}${endpoint}`;
