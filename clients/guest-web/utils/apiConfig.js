@@ -5,29 +5,15 @@ export const API_BASE_URLS = {
     AUTH_SERVICE: "http://localhost:8000/auth",
     MENU_SERVICE: "http://localhost:8000/menu",
     ORDER_SERVICE: "http://localhost:8000/order",
-  };
+};
   
-  export const SERVICES = {
+export const SERVICES = {
     AUTH: 'AUTH_SERVICE',
     MENU: 'MENU_SERVICE',
     ORDER: 'ORDER_SERVICE',
-  };
+};
 
-// clients/guest-web/utils/apiConfig.js
-
-// export const API_BASE_URLS = {
-//   MENU_SERVICE: "http://192.168.1.25:7002",
-//  ORDER_PAYMENT_SERVICE: "http://172.23.15.59:7003",
-//   RESERVATION_SERVICE: "http://localhost:7004",
-//   TENANT_AUTH_SERVICE: "http://192.168.1.22:7001", // Thêm dòng này
-// };
-
-// export const SERVICES = {
-//     MENU: 'MENU_SERVICE',
-//     ORDER: 'ORDER_PAYMENT_SERVICE',
-// };
-// ... (giữ nguyên phần còn lại của file)
-  export const fetchAPI = async (service, endpoint, options = {}) => {
+export const fetchAPI = async (service, endpoint, options = {}) => {
     const baseUrl = API_BASE_URLS[service];
     if (!baseUrl) {
       console.error(`Service ${service} not found`);
@@ -43,6 +29,17 @@ export const API_BASE_URLS = {
         ...options,
       });
       
+      // --- XỬ LÝ LỖI 401 (UNAUTHORIZED) ---
+      // Nếu server trả về 401, tức là token không hợp lệ hoặc hết hạn
+      if (res.status === 401) {
+          console.warn("Phiên đăng nhập hết hạn hoặc không có quyền truy cập (401).");
+          // Logic xử lý tùy chọn: có thể reload trang để clear state cũ
+          if (typeof window !== 'undefined') {
+              // window.location.reload(); 
+          }
+          return null;
+      }
+
       if (!res.ok) {
           // Log lỗi nhưng không throw để tránh crash app người dùng
           console.error(`API Error: ${res.statusText}`);
@@ -53,4 +50,4 @@ export const API_BASE_URLS = {
       console.error("Fetch API Error:", error);
       return null;
     }
-  };
+};
