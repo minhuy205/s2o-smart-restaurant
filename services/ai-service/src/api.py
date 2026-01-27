@@ -6,7 +6,7 @@ import google.generativeai as genai
 from flask import Flask, jsonify, request
 from google.generativeai.types import FunctionDeclaration, Tool
 
-app = Flask(__name__)
+app = Flask(_name_)
 
 # --- CẤU HÌNH ---
 GOOGLE_API_KEY = "AIzaSyBPRBpeIfSLK_LpT-B8GY-Jpfbv6BcZflE" # Đảm bảo API Key chính xác
@@ -73,37 +73,40 @@ restaurant_tools = Tool(
     ]
 )
 
-# --- SYSTEM PROMPT (Cập nhật logic trạng thái món) ---
+# --- SYSTEM PROMPT (Cập nhật: Thêm phần xử lý thông tin quán) ---
 SYSTEM_PROMPT = """
 Bạn là nhân viên phục vụ S2O (Smart Restaurant). Phong cách: Nhanh nhẹn, thân thiện, dùng emoji 👨‍🍳.
 
 QUY TRÌNH XỬ LÝ:
-1. **Phân loại câu hỏi để gọi tool `get_menu_filtered`**:
-   - Hỏi "Sắp có mặt", "Sắp ra mắt", "Món mới sắp về" -> `filter_type="coming_soon"`
-   - Hỏi "Hết hàng", "Hết món" -> `filter_type="out_of_stock"`
-   - Hỏi "Đang bán", "Có những món nào ăn được", "Thực đơn hiện tại" -> `filter_type="available"`
-   - Hỏi "Menu chung", "Xem thực đơn" -> `filter_type="all"`
-   - Hỏi "Nước", "Uống" -> `filter_type="drink"`
-   - Hỏi "Bán chạy", "Hot" -> `filter_type="best_seller"`
-   - Hỏi "Khuyến mãi" -> `filter_type="promo"`
+1. *Thông tin quán (Tên, Địa chỉ)*:
+   - Trả lời dựa trên "THÔNG TIN BỐI CẢNH" được cung cấp. Nếu không có thông tin, hãy báo đang cập nhật.
 
-2. **Trả lời khách**:
+2. **Phân loại câu hỏi để gọi tool get_menu_filtered**:
+   - Hỏi "Sắp có mặt", "Sắp ra mắt", "Món mới sắp về" -> filter_type="coming_soon"
+   - Hỏi "Hết hàng", "Hết món" -> filter_type="out_of_stock"
+   - Hỏi "Đang bán", "Có những món nào ăn được", "Thực đơn hiện tại" -> filter_type="available"
+   - Hỏi "Menu chung", "Xem thực đơn" -> filter_type="all"
+   - Hỏi "Nước", "Uống" -> filter_type="drink"
+   - Hỏi "Bán chạy", "Hot" -> filter_type="best_seller"
+   - Hỏi "Khuyến mãi" -> filter_type="promo"
+
+3. *Trả lời khách*:
    - Dựa vào kết quả trả về để liệt kê.
    - Nếu danh sách trống, hãy báo lịch sự (VD: "Dạ hiện chưa có món nào sắp ra mắt ạ").
 
-3. **Đặt món & Kiểm tra đơn**:
-   - Quy trình giữ nguyên: Gọi `place_order_intent` -> Hỏi xác nhận -> Chốt đơn.
+4. *Đặt món & Kiểm tra đơn*:
+   - Quy trình giữ nguyên: Gọi place_order_intent -> Hỏi xác nhận -> Chốt đơn.
 """
 
 @app.route("/")
 def index():
-    return jsonify({"service": "AI Service (Updated: Status & Filters)", "status": "Ready"})
+    return jsonify({"service": "AI Service (Added Address Support)", "status": "Ready"})
 
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.json or {}
     user_message = data.get("message", "")
-    context = data.get("context", {})
+    context = data.get("context", {}) # Lấy context (Tên, Địa chỉ) từ App
     tenant_id = context.get("tenant_id", 1)
     
     user_id = data.get("user_id") or request.remote_addr
@@ -111,25 +114,34 @@ def chat():
 
     print(f"🔹 [{session_key}] Khách: {user_message}", flush=True)
 
-    # 1. AI Logic
-    ai_response = try_use_ai_robust(user_message, tenant_id, session_key)
+    # 1. AI Logic (Truyền thêm context)
+    ai_response = try_use_ai_robust(user_message, tenant_id, session_key, context)
     if ai_response:
         return jsonify({"type": "text", "reply": ai_response})
     
-    # 2. Fallback Logic
+    # 2. Fallback Logic (Truyền thêm context)
     print("⚠️ Fallback activated", flush=True)
-    return jsonify({"type": "text", "reply": manual_fallback_logic(user_message, tenant_id)})
+    return jsonify({"type": "text", "reply": manual_fallback_logic(user_message, tenant_id, context)})
 
 # --- AI ENGINE ---
-def try_use_ai_robust(user_message, tenant_id, session_key):
+def try_use_ai_robust(user_message, tenant_id, session_key, context):
     global CHAT_SESSIONS
+    
+    # Bơm thông tin quán vào Prompt
+    restaurant_info = f"""
+    --- THÔNG TIN BỐI CẢNH ---
+    Tên nhà hàng: {context.get('restaurant_name', 'S2O Restaurant')}
+    Địa chỉ: {context.get('address', 'Đang cập nhật')}
+    --------------------------
+    """
     
     for attempt in range(2):
         try:
             chat_session = get_or_create_session(session_key, force_new=(attempt > 0))
             if not chat_session: continue
 
-            response = chat_session.send_message(f"{SYSTEM_PROMPT}\nKhách: {user_message}")
+            # Gửi Prompt kèm thông tin quán
+            response = chat_session.send_message(f"{SYSTEM_PROMPT}\n{restaurant_info}\nKhách: {user_message}")
             if not response.candidates: continue
 
             part = response.candidates[0].content.parts[0]
@@ -159,7 +171,6 @@ def try_use_ai_robust(user_message, tenant_id, session_key):
                     item_name = fn_args.get("item_name", "")
                     item = find_item(tenant_id, item_name)
                     if item:
-                        # Chỉ cho đặt món nếu Đang bán (Không cho đặt món Hết hàng/Sắp có)
                         status = item.get('status', 'Available')
                         if status in ['OutOfStock', 'ComingSoon']:
                             api_result = {
@@ -208,7 +219,6 @@ def fetch_menu_raw(tid):
     try:
         r = requests.get(f"{MENU_SERVICE_URL}?tenantId={tid}", timeout=2)
         if r.ok:
-            # Lấy TOÀN BỘ món, kể cả món ẩn/hết hàng để lọc sau
             return [{
                 "name": m['name'], 
                 "price": m['price'],
@@ -223,7 +233,6 @@ def fetch_menu_with_filter(tid, filter_type):
     """Bộ lọc thông minh theo Status"""
     all_items = fetch_menu_raw(tid)
     
-    # Nhóm "Đang bán" (Orderable) bao gồm: Available, BestSeller, Promo
     ORDERABLE_STATUSES = ['Available', 'BestSeller', 'Promo']
 
     if filter_type == "all":
@@ -236,7 +245,6 @@ def fetch_menu_with_filter(tid, filter_type):
         return [i for i in all_items if i.get('status') == 'OutOfStock']
     
     if filter_type == "available":
-        # Chỉ lấy những món có thể gọi được
         return [i for i in all_items if i.get('status') in ORDERABLE_STATUSES]
     
     if filter_type == "best_seller":
@@ -267,24 +275,33 @@ def fetch_order_status(order_id):
     except: return {"error": "connection_error"}
 
 # --- FALLBACK LOGIC (Thủ công) ---
-def manual_fallback_logic(msg, tid):
+def manual_fallback_logic(msg, tid, context):
     msg = msg.lower()
     
-    # 1. Hỏi món Sắp có (Coming Soon)
+    # 0. [MỚI] Xử lý câu hỏi Địa chỉ/Tên quán
+    if "địa chỉ" in msg or "ở đâu" in msg:
+        addr = context.get('address', 'Đang cập nhật')
+        return f"📍 Địa chỉ quán mình là: {addr} ạ."
+    
+    if "tên quán" in msg or "nhà hàng nào" in msg:
+        name = context.get('restaurant_name', 'S2O Restaurant')
+        return f"🏠 Dạ đây là nhà hàng {name} ạ."
+
+    # 1. Hỏi món Sắp có
     if "sắp có" in msg or "sắp ra" in msg or "coming soon" in msg:
         items = fetch_menu_with_filter(tid, "coming_soon")
         if items:
             return "🔜 Các món sắp ra mắt:\n" + "\n".join([f"- {i['name']}" for i in items])
         return "👨‍🍳 Hiện chưa có thông tin món mới sắp ra mắt ạ."
 
-    # 2. Hỏi món Hết hàng (Out of Stock)
+    # 2. Hỏi món Hết hàng
     if "hết hàng" in msg or "hết món" in msg:
         items = fetch_menu_with_filter(tid, "out_of_stock")
         if items:
             return "🚫 Các món tạm hết hàng:\n" + "\n".join([f"- {i['name']}" for i in items])
         return "👨‍🍳 Tuyệt vời! Hiện tại quán đang đầy đủ nguyên liệu cho tất cả các món ạ."
 
-    # 3. Hỏi món Đang bán (Available)
+    # 3. Hỏi món Đang bán
     if "đang bán" in msg or "còn món gì" in msg or "menu hiện tại" in msg:
         items = fetch_menu_with_filter(tid, "available")
         if items:
@@ -308,7 +325,7 @@ def manual_fallback_logic(msg, tid):
         items = fetch_menu_with_filter(tid, "all")
         return "📜 Tất cả món ăn:\n" + "\n".join([f"- {i['name']} ({i['status']}): {i['price']}đ" for i in items])
 
-    return "👨‍🍳 Bạn cần giúp gì ạ? (Menu, Sắp ra mắt, Hết hàng, Gọi món...)"
+    return "👨‍🍳 Bạn cần giúp gì ạ? (Menu, Sắp ra mắt, Hết hàng, Gọi món, Địa chỉ...)"
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     app.run(host="0.0.0.0", port=5000)
