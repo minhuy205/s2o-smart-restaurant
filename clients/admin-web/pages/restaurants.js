@@ -7,7 +7,6 @@ const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: "📊", href: "/dashboard" },
   { key: "restaurants", label: "Quản lý nhà hàng", icon: "🏪", href: "/restaurants" },
   { key: "customers", label: "Quản lý khách hàng", icon: "👥", href: "/customers" },
-  { key: "orders", label: "Quản lý đơn hàng", icon: "📋", href: "/orders" },
   { key: "settings", label: "Cài đặt", icon: "⚙️", href: "/settings" },
 ]
 

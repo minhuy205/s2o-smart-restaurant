@@ -4,7 +4,6 @@ import "../styles/register.css"
 import "../styles/dashboard.css"
 import "../styles/restaurants.css"
 import "../styles/customers.css"
-import "../styles/orders.css"
 import "../styles/settings.css"
 
 
