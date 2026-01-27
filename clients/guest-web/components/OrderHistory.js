@@ -2,13 +2,20 @@
 import React, { useState, useEffect } from 'react';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
 
-const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
+
+/**
+ * SỬA ĐỔI: Nhận thêm prop 'tableName' để lọc lịch sử chính xác hơn
+ * tableId: Dùng làm ID định danh để gọi API thanh toán (Ví dụ: 22, 23)
+ * tableName: Dùng để hiển thị và lọc đơn hàng (Ví dụ: "Bàn 1")
+ */
+const OrderHistory = ({ tenantId, tableId, tableName, address, onClose }) => {
     const [orders, setOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    
+   
     // State cho chức năng Gọi thanh toán
     const [isRequestingPayment, setIsRequestingPayment] = useState(false);
     const [requestSuccess, setRequestSuccess] = useState(false);
+
 
     // --- 1. LẤY DỮ LIỆU LỊCH SỬ ---
     const fetchHistory = async () => {
@@ -19,58 +26,70 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
             if (data && Array.isArray(data)) {
                 const myOrders = data
                     .filter(o => {
-                        const isSameTable = o.tableName && tableId && o.tableName.includes(tableId);
+                        // ✅ SỬA: Lọc dựa trên tableName (ví dụ "Bàn 1") thay vì ID
+                        // để không bị mất đơn hàng cũ khi ID thay đổi theo nhà hàng
+                        const currentTableName = tableName || tableId;
+                        const isSameTable = o.tableName && currentTableName && o.tableName.includes(currentTableName);
+                       
                         const status = (o.status || '').toString();
                         // Chỉ ẩn những đơn đã trả tiền hoặc huỷ, còn lại hiện hết
                         const isHidden = ['Paid', 'Cancelled', 'Rejected'].includes(status);
                         return isSameTable && !isHidden;
                     })
                     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-                
+               
                 setOrders(myOrders);
             }
-        } catch (error) { 
-            console.error("Lỗi tải đơn hàng:", error); 
+        } catch (error) {
+            console.error("Lỗi tải đơn hàng:", error);
         } finally {
             setIsLoading(false);
         }
     };
 
+
     useEffect(() => {
         fetchHistory();
         const interval = setInterval(fetchHistory, 10000); // Tự động refresh mỗi 10s
         return () => clearInterval(interval);
-    }, [tenantId, tableId]);
+    }, [tenantId, tableId, tableName]);
+
 
     // --- 2. XỬ LÝ GỌI THANH TOÁN ---
     const handleRequestPayment = async () => {
         if (!confirm("Bạn muốn gọi nhân viên đến thanh toán?")) return;
         setIsRequestingPayment(true);
-        
+       
         try {
-            // Lấy ID số của bàn (VD: "Table 1" -> 1) để gọi API
-            let numericTableId = tableId.replace(/\D/g, ''); 
-            
-            // BƯỚC 1: Lấy thông tin bàn hiện tại để giữ lại currentOrderId
+            // ✅ SỬA: Sử dụng trực tiếp ID số từ URL để gọi API chính xác cho từng quán
+            const numericTableId = Number(tableId);
+           
+            // BƯỚC 1: Lấy thông tin bàn hiện tại từ MenuService
             const tables = await fetchAPI(SERVICES.MENU, `/api/tables?tenantId=${tenantId}`);
-            const currentTable = tables ? tables.find(t => t.id == numericTableId) : null;
-            
+           
+            // Tìm đúng bàn dựa trên ID thực (kiểm tra cả id và Id)
+            const currentTable = tables ? tables.find(t => {
+                const apiId = t.id !== undefined ? t.id : t.Id;
+                return Number(apiId) === numericTableId;
+            }) : null;
+           
             if (currentTable) {
-                // BƯỚC 2: Gọi đúng API cập nhật trạng thái
-                await fetchAPI(SERVICES.MENU, `/api/tables/${numericTableId}/status`, { 
-                    method: 'PUT', 
-                    body: JSON.stringify({ 
-                        status: 'PaymentRequested', // <-- Dashboard sẽ hiện màu đỏ
-                        currentOrderId: currentTable.currentOrderId // Giữ nguyên ID đơn hàng
-                    }) 
+                // BƯỚC 2: Gọi đúng API cập nhật trạng thái bàn sang "Yêu cầu thanh toán"
+                await fetchAPI(SERVICES.MENU, `/api/tables/${numericTableId}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        status: 'PaymentRequested',
+                        currentOrderId: currentTable.currentOrderId
+                    })
                 });
 
+
                 setRequestSuccess(true);
-                // Ẩn thông báo thành công sau 5s
                 setTimeout(() => setRequestSuccess(false), 5000);
             } else {
                 alert("Không tìm thấy thông tin bàn. Vui lòng gọi trực tiếp.");
             }
+
 
         } catch (error) {
             console.error("Lỗi gọi thanh toán:", error);
@@ -79,6 +98,7 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
             setIsRequestingPayment(false);
         }
     };
+
 
     // --- 3. HELPERS ---
     const getStatusInfo = (status) => {
@@ -90,6 +110,7 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
         return { text: 'Chờ xác nhận', bg: '#F3F4F6', color: '#4B5563', border: '#E5E7EB' };
     };
 
+
     const formatTime = (dateStr) => {
         if(!dateStr) return '';
         const d = new Date(dateStr);
@@ -98,7 +119,9 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
         });
     }
 
+
     const grandTotal = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+
 
     return (
         <div className="history-overlay" onClick={onClose}>
@@ -107,15 +130,15 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                 <div className="history-header">
                     <div>
                         <h3 className="history-title">Hóa đơn tạm tính</h3>
-                        {address && <div className="history-address">📍 {address} • {tableId}</div>}
+                        {address && <div className="history-address">📍 {address} • {tableName || `Bàn #${tableId}`}</div>}
                     </div>
                     <button className="btn-close-dialog" onClick={onClose}>✕</button>
                 </div>
-                
+               
                 {/* CONTENT */}
                 <div className="history-content">
-                    {isLoading ? ( 
-                        <div className="empty-history">Đang cập nhật...</div> 
+                    {isLoading ? (
+                        <div className="empty-history">Đang cập nhật...</div>
                     ) : orders.length === 0 ? (
                         <div className="empty-history">
                             <div style={{fontSize:40, marginBottom: 10}}>✨</div>
@@ -124,10 +147,10 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                         </div>
                     ) : (
                         <>
-                            {/* DANH SÁCH MÓN */}
                             {orders.map((order) => {
                                 const st = getStatusInfo(order.status);
                                 const displayDate = order.createdAt || order.createdDate;
+
 
                                 return (
                                     <div key={order.id} className="order-card-pro">
@@ -137,7 +160,7 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                                                 {st.text}
                                             </span>
                                         </div>
-                                        
+                                       
                                         <div className="order-item-list">
                                             {order.items.map((item, idx) => (
                                                 <div key={idx} className="order-item-row">
@@ -155,18 +178,17 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                                     </div>
                                 );
                             })}
-                            
-                            {/* TỔNG TIỀN */}
+                           
                             <div className="history-grand-total">
                                 <span>Tổng cộng cần thanh toán:</span>
                                 <span className="grand-price">{grandTotal.toLocaleString()} đ</span>
                             </div>
 
-                            {/* --- NÚT GỌI THANH TOÁN --- */}
+
                             {grandTotal > 0 && (
                                 <div style={{marginTop: 15}}>
                                     {!requestSuccess ? (
-                                        <button 
+                                        <button
                                             className="btn-request-payment"
                                             onClick={handleRequestPayment}
                                             disabled={isRequestingPayment}
@@ -183,14 +205,12 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                         </>
                     )}
                 </div>
-                
-                {/* FOOTER REFRESH */}
+               
                 <div style={{padding: '10px 15px', borderTop: '1px solid #eee', background: 'white'}}>
                     <button onClick={fetchHistory} className="btn-refresh">🔄 Làm mới</button>
                 </div>
             </div>
-            
-            {/* CSS STYLE */}
+           
             <style jsx>{`
                 .history-overlay {
                     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -219,7 +239,7 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                 }
                 .history-content { flex: 1; overflow-y: auto; padding: 15px; }
                 .empty-history { text-align: center; margin-top: 60px; color: #999; font-size: 14px; }
-                
+               
                 .order-card-pro {
                     background: white; border-radius: 12px; padding: 12px 15px;
                     margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -228,13 +248,13 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                 .order-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #eee; }
                 .order-time { font-size: 12px; color: #888; font-weight: 500; }
                 .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-                
+               
                 .order-item-list { display: flex; flex-direction: column; gap: 8px; }
                 .order-item-row { display: flex; justify-content: space-between; font-size: 14px; color: #333; }
                 .item-qty { font-weight: 700; width: 25px; color: #F97316; }
                 .item-name { font-weight: 500; }
                 .item-price { font-weight: 600; color: #333; }
-                
+               
                 .history-grand-total {
                     margin-top: 10px; padding: 15px; background: #FFF7ED; border-radius: 12px;
                     display: flex; justify-content: space-between; align-items: center;
@@ -242,40 +262,30 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
                 }
                 .grand-price { font-size: 18px; color: #EA580C; }
 
-                /* BUTTON GỌI THANH TOÁN */
+
                 .btn-request-payment {
-                    width: 100%;
-                    padding: 14px;
-                    background: #4F46E5;
-                    color: white;
-                    border: none;
-                    border-radius: 12px;
-                    font-size: 15px;
-                    font-weight: 700;
-                    cursor: pointer;
-                    box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25);
+                    width: 100%; padding: 14px; background: #4F46E5; color: white;
+                    border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
+                    cursor: pointer; box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25);
                     transition: all 0.2s;
                 }
                 .btn-request-payment:active { transform: scale(0.98); }
                 .btn-request-payment:disabled { background: #A5B4FC; cursor: not-allowed; }
 
+
                 .alert-success {
-                    padding: 14px;
-                    background: #ECFDF5;
-                    color: #059669;
-                    border: 1px solid #D1FAE5;
-                    border-radius: 12px;
-                    text-align: center;
-                    font-weight: 600;
-                    font-size: 14px;
+                    padding: 14px; background: #ECFDF5; color: #059669; border: 1px solid #D1FAE5;
+                    border-radius: 12px; text-align: center; font-weight: 600; font-size: 14px;
                     animation: fadeIn 0.3s;
                 }
 
+
                 .btn-refresh {
-                    width: 100%; padding: 12px; background: #F3F4F6; border: none; 
+                    width: 100%; padding: 12px; background: #F3F4F6; border: none;
                     border-radius: 8px; font-weight: 600; color: #374151; cursor: pointer; transition: 0.2s;
                 }
                 .btn-refresh:active { background: #E5E7EB; }
+
 
                 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -284,4 +294,8 @@ const OrderHistory = ({ tenantId, tableId, address, onClose }) => {
     );
 };
 
+
 export default OrderHistory;
+
+
+

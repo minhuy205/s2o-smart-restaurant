@@ -2,52 +2,61 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { fetchAPI, SERVICES } from '../utils/apiConfig';
 // 👇 Vẫn import để lấy Token, nhưng không dùng onMessageListener nữa
-import { requestForToken } from '../utils/firebaseConfig'; 
+import { requestForToken } from '../utils/firebaseConfig';
+
 
 import CartFooter from '../components/Cart/CartFooter';
-import ItemCard from '../components/Menu/ItemCard'; 
-import ItemDetailModal from '../components/Menu/ItemDetailModal'; 
-import OrderHistory from '../components/OrderHistory'; 
+import ItemCard from '../components/Menu/ItemCard';
+import ItemDetailModal from '../components/Menu/ItemDetailModal';
+import OrderHistory from '../components/OrderHistory';
+
 
 const CATEGORY_MAP = { 1: 'Món nước', 2: 'Món khô', 3: 'Đồ uống', 4: 'Tráng miệng', 5: 'Khác' };
 
+
 // ID phải khớp với Database và Switch Case
 const SPECIAL_CATS = [
-  { id: 'BestSeller', name: '🔥 Best Seller' }, 
-  { id: 'Promo',      name: '🏷️ Khuyến mãi' },       
-  { id: 'ComingSoon', name: '🟡 Sắp có' }       
+  { id: 'BestSeller', name: '🔥 Best Seller' },
+  { id: 'Promo',      name: '🏷️ Khuyến mãi' },      
+  { id: 'ComingSoon', name: '🟡 Sắp có' }      
 ];
+
 
 const removeAccents = (str) => {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
+
 export default function GuestMenu() {
   const router = useRouter();
   const { tenantId, tableId } = router.query;
 
+
   // --- STATE ---
-  const [allMenuItems, setAllMenuItems] = useState([]); 
+  const [allMenuItems, setAllMenuItems] = useState([]);
   const [tableInfo, setTableInfo] = useState(null);
-  const [cart, setCart] = useState([]); 
+  const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+ 
   // State xử lý Loading & Popup Thành công
-  const [isOrdering, setIsOrdering] = useState(false); 
-  const [orderSent, setOrderSent] = useState(false); 
+  const [isOrdering, setIsOrdering] = useState(false);
+  const [orderSent, setOrderSent] = useState(false);
+
 
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
-  const [isCartOpen, setIsCartOpen] = useState(false); 
-  const [deviceToken, setDeviceToken] = useState(null); 
-  const [selectedItem, setSelectedItem] = useState(null); 
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [deviceToken, setDeviceToken] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
 
   // --- EFFECTS ---
   useEffect(() => {
     if (tenantId && tableId) loadRestaurantData(tenantId, tableId);
   }, [tenantId, tableId]);
+
 
   // 👇 ĐÃ SỬA: Chỉ lấy Token, KHÔNG hiện Alert khi có tin nhắn nữa
   useEffect(() => {
@@ -55,34 +64,35 @@ export default function GuestMenu() {
         requestForToken().then(token => {
             if (token) setDeviceToken(token);
         });
-        
+       
         // ❌ Đã xóa đoạn onMessageListener alert(...) gây phiền
     }
   }, []);
 
+
   const loadRestaurantData = async (tid, tbid) => {
     setLoading(true);
     let tempInfo = { name: `Bàn #${tbid}` };
-    
+   
     try {
         const tenant = await fetchAPI(SERVICES.AUTH, `/api/tenants/${tid}`);
         if(tenant) {
-            tempInfo = { 
-                ...tempInfo, 
+            tempInfo = {
+                ...tempInfo,
                 restaurantName: tenant.name,
                 address: tenant.address || 'Đang cập nhật',
                 logoUrl: tenant.logoUrl
             };
         }
-        
+       
         const menu = await fetchAPI(SERVICES.MENU, `/api/menu?tenantId=${tid}`);
         if (menu) {
             setAllMenuItems(menu.map(i => ({
-                ...i, 
+                ...i,
                 category: CATEGORY_MAP[i.categoryId] || i.category || 'Khác'
             })));
         }
-        
+       
         const tables = await fetchAPI(SERVICES.MENU, `/api/tables?tenantId=${tid}`);
         if (tables) {
             const found = tables.find(t => t.id == tbid);
@@ -95,8 +105,9 @@ export default function GuestMenu() {
     setLoading(false);
   };
 
+
   const categories = useMemo(() => ['Tất cả', ...[...new Set(allMenuItems.map(i => i.category))].filter(Boolean)], [allMenuItems]);
-  
+ 
   const groupedItems = useMemo(() => {
       const groups = {};
       allMenuItems.forEach(item => {
@@ -106,21 +117,24 @@ export default function GuestMenu() {
       return groups;
   }, [allMenuItems]);
 
+
   const searchResults = useMemo(() => {
       if (!searchTerm) return [];
       const lowerTerm = removeAccents(searchTerm);
       return allMenuItems.filter(item => removeAccents(item.name).includes(lowerTerm));
   }, [searchTerm, allMenuItems]);
 
+
   // LOGIC LỌC
   const displayedItemsByTab = useMemo(() => {
-      if (selectedCategory === 'Tất cả') return allMenuItems; 
+      if (selectedCategory === 'Tất cả') return allMenuItems;
       const isSpecialCat = SPECIAL_CATS.some(c => c.id === selectedCategory);
       if (isSpecialCat) {
           return allMenuItems.filter(i => i.status === selectedCategory);
       }
       return allMenuItems.filter(i => i.category === selectedCategory);
   }, [selectedCategory, allMenuItems]);
+
 
   const handleAddToCart = (item, quantity, note = '') => {
       setCart(prev => {
@@ -131,38 +145,40 @@ export default function GuestMenu() {
       setIsCartOpen(true);
   };
 
+
   const updateQuantity = (cartId, delta) => setCart(prev => prev.map(i => i.cartId === cartId ? { ...i, quantity: i.quantity + delta } : i).filter(i => i.quantity > 0));
   const setQuantityDirect = (cartId, val) => setCart(prev => prev.map(i => i.cartId === cartId ? { ...i, quantity: val } : i).filter(i => i.quantity > 0));
   const updateNote = (cartId, newNote) => setCart(prev => prev.map(i => i.cartId === cartId ? { ...i, note: newNote } : i));
 
+
   // 👇 HÀM ĐẶT MÓN (Giữ nguyên logic hiển thị Popup thành công)
   const handlePlaceOrder = async () => {
     if (!cart.length) return;
-    
+   
     // 1. Bật trạng thái loading
     setIsOrdering(true);
-    
+   
     const payload = {
-        tableName: tableInfo?.name, 
+        tableName: tableInfo?.name,
         totalAmount: cart.reduce((s, i) => s + i.price * i.quantity, 0),
-        status: "Pending", 
-        tenantId: Number(tenantId), 
-        tableId: Number(tableId), 
-        deviceToken: deviceToken, 
+        status: "Pending",
+        tenantId: Number(tenantId),
+        tableId: Number(tableId),
+        deviceToken: deviceToken,
         items: cart.map(i => ({ menuItemName: i.name, price: i.price, quantity: i.quantity, note: i.note || "" }))
     };
-    
+   
     try {
         const res = await fetchAPI(SERVICES.ORDER, '/api/orders', { method: 'POST', body: JSON.stringify(payload) });
-        
-        if(res) { 
+       
+        if(res) {
             // 2. Đóng giỏ hàng
-            setIsCartOpen(false); 
+            setIsCartOpen(false);
             // 3. Xóa giỏ hàng
-            setCart([]); 
+            setCart([]);
             // 4. Mở Popup thành công (Delay nhẹ để mượt)
             setTimeout(() => {
-                setOrderSent(true); 
+                setOrderSent(true);
             }, 300);
         }
     } catch (err) {
@@ -174,7 +190,9 @@ export default function GuestMenu() {
     }
   };
 
+
   if(loading) return <div style={{padding:40, textAlign:'center'}}>Đang tải thực đơn...</div>;
+
 
   return (
     <div>
@@ -194,27 +212,29 @@ export default function GuestMenu() {
               </div>
           </div>
 
+
           {showSearch && (
               <div className="search-bar-container">
                   <input className="search-input" placeholder="Tìm tên món ăn..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} autoFocus />
               </div>
           )}
-          
+         
           {!searchTerm && (
               <div className="category-container">
                   <div className="category-nav">
                       <button className={`cat-btn ${selectedCategory === 'Tất cả' ? 'active' : ''}`} onClick={() => setSelectedCategory('Tất cả')}>Tất cả</button>
-                      
+                     
                       {SPECIAL_CATS.map(cat => (
-                        <button 
-                          key={cat.id} 
-                          className={`cat-btn ${selectedCategory === cat.id ? 'active' : ''}`} 
+                        <button
+                          key={cat.id}
+                          className={`cat-btn ${selectedCategory === cat.id ? 'active' : ''}`}
                           onClick={() => setSelectedCategory(cat.id)}
                           style={{color: '#d32f2f', fontWeight: 'bold'}}
                         >
                           {cat.name}
                         </button>
                       ))}
+
 
                       {categories.filter(c => c !== 'Tất cả').map(cat => (
                           <button key={cat} className={`cat-btn ${selectedCategory === cat ? 'active' : ''}`} onClick={() => setSelectedCategory(cat)}>{cat}</button>
@@ -223,6 +243,7 @@ export default function GuestMenu() {
               </div>
           )}
       </div>
+
 
       {/* 🔹 Danh sách món */}
       <div style={{paddingTop: '10px', paddingBottom: '80px'}}>
@@ -264,18 +285,26 @@ export default function GuestMenu() {
             )
         )}
       </div>
-      
+     
       {/* 🔹 Các Modal */}
       {selectedItem && <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} />}
-      {showHistory && <OrderHistory tenantId={tenantId} tableId={tableInfo?.name} address={tableInfo?.address} onClose={() => setShowHistory(false)} />}
-      
-      <CartFooter 
-        cart={cart} isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} handlePlaceOrder={handlePlaceOrder} 
-        updateQuantity={updateQuantity} setQuantityDirect={setQuantityDirect} updateNote={updateNote} 
-        calculateTotal={() => cart.reduce((s, i) => s + i.price * i.quantity, 0)} 
-        isLoading={isOrdering} 
+      // Trong trang index.js
+{showHistory && (
+  <OrderHistory
+    tenantId={tenantId}
+    tableId={tableId}           // Đây là ID số từ URL (ví dụ: 22) dùng để gọi nhân viên
+    tableName={tableInfo?.name} // Đây là tên hiển thị (ví dụ: "Bàn 1") dùng để lọc lịch sử
+    address={tableInfo?.address}
+    onClose={() => setShowHistory(false)}
+  />
+)}
+      <CartFooter
+        cart={cart} isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} handlePlaceOrder={handlePlaceOrder}
+        updateQuantity={updateQuantity} setQuantityDirect={setQuantityDirect} updateNote={updateNote}
+        calculateTotal={() => cart.reduce((s, i) => s + i.price * i.quantity, 0)}
+        isLoading={isOrdering}
       />
-      
+     
       {/* 🔹 OVERLAY LOADING */}
       {isOrdering && (
         <div style={{
@@ -284,7 +313,7 @@ export default function GuestMenu() {
             display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column'
         }}>
             <div style={{
-                width: 40, height: 40, border: '4px solid #fff', borderTop: '4px solid #F97316', 
+                width: 40, height: 40, border: '4px solid #fff', borderTop: '4px solid #F97316',
                 borderRadius: '50%', animation: 'spin 1s linear infinite'
             }}></div>
             <div style={{color: 'white', marginTop: 15, fontWeight: 'bold', fontSize: 16}}>Đang gửi đơn...</div>
@@ -293,6 +322,7 @@ export default function GuestMenu() {
             `}</style>
         </div>
       )}
+
 
       {/* 🔹 POPUP THÀNH CÔNG (Vẫn giữ nguyên để báo cho khách) */}
       {orderSent && (
@@ -308,3 +338,6 @@ export default function GuestMenu() {
     </div>
   );
 }
+
+
+
