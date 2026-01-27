@@ -527,14 +527,11 @@ app.MapGet("/api/membership/points/{userId:int}", async (AuthDbContext db, int u
         role = user.Role 
     });
 });
-
-// ==========================================
-// API LẤY DANH SÁCH THÀNH VIÊN CỦA 1 NHÀ HÀNG (Dành cho Chủ quán)
-// ==========================================
+// Lấy danh sách khách hàng (Có thể lọc thêm theo TenantId nếu bạn gán khách vào quán khi đặt đơn)
 app.MapGet("/api/membership/tenant/{tenantId:int}", async (AuthDbContext db, int tenantId) =>
 {
     var members = await db.Users
-        .Where(u => u.TenantId == tenantId && u.Role == "Customer")
+        .Where(u => u.Role == "Customer") // Lấy tất cả khách hàng trong hệ thống S2O
         .Select(u => new {
             id = u.Id,
             username = u.Username,
@@ -549,19 +546,21 @@ app.MapGet("/api/membership/tenant/{tenantId:int}", async (AuthDbContext db, int
 });
 
 // ==========================================
-// API CẬP NHẬT ĐIỂM THƯỞNG (Sau khi thanh toán)
+// API CẬP NHẬT ĐIỂM THƯỞNG (Đã sửa để nhận DTO)
 // ==========================================
-app.MapPost("/api/membership/add-points", async (AuthDbContext db, int userId, int pointsToAdd) =>
+app.MapPost("/api/membership/add-points", async (AuthDbContext db, AddPointsRequest request) =>
 {
-    var user = await db.Users.FindAsync(userId);
+    // Tìm user dựa trên ID truyền vào từ request body
+    var user = await db.Users.FindAsync(request.UserId);
     if (user == null) return Results.NotFound(new { message = "Không tìm thấy người dùng" });
 
-    user.Points += pointsToAdd;
+    // Thực hiện cộng điểm
+    user.Points += request.PointsToAdd;
     await db.SaveChangesAsync();
 
     return Results.Ok(new { 
         success = true, 
-        message = $"Đã cộng {pointsToAdd} điểm. Tổng điểm hiện tại: {user.Points}",
+        message = $"Đã cộng {request.PointsToAdd} điểm. Tổng điểm hiện tại: {user.Points}",
         currentPoints = user.Points
     });
 });
@@ -606,4 +605,9 @@ public class GoogleAuthRequest
     public string FullName { get; set; }
     public string GoogleId { get; set; }
     public string PhotoUrl { get; set; }
+}
+public class AddPointsRequest 
+{
+    public int UserId { get; set; }
+    public int PointsToAdd { get; set; }
 }
