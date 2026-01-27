@@ -6,7 +6,7 @@ import google.generativeai as genai
 from flask import Flask, jsonify, request
 from google.generativeai.types import FunctionDeclaration, Tool
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 # --- CẤU HÌNH ---
 GOOGLE_API_KEY = "AIzaSyBPRBpeIfSLK_LpT-B8GY-Jpfbv6BcZflE" # Đảm bảo API Key chính xác
@@ -78,21 +78,21 @@ SYSTEM_PROMPT = """
 Bạn là nhân viên phục vụ S2O (Smart Restaurant). Phong cách: Nhanh nhẹn, thân thiện, dùng emoji 👨‍🍳.
 
 QUY TRÌNH XỬ LÝ:
-1. **Phân loại câu hỏi để gọi tool get_menu_filtered**:
-   - Hỏi "Sắp có mặt", "Sắp ra mắt", "Món mới sắp về" -> filter_type="coming_soon"
-   - Hỏi "Hết hàng", "Hết món" -> filter_type="out_of_stock"
-   - Hỏi "Đang bán", "Có những món nào ăn được", "Thực đơn hiện tại" -> filter_type="available"
-   - Hỏi "Menu chung", "Xem thực đơn" -> filter_type="all"
-   - Hỏi "Nước", "Uống" -> filter_type="drink"
-   - Hỏi "Bán chạy", "Hot" -> filter_type="best_seller"
-   - Hỏi "Khuyến mãi" -> filter_type="promo"
+1. **Phân loại câu hỏi để gọi tool `get_menu_filtered`**:
+   - Hỏi "Sắp có mặt", "Sắp ra mắt", "Món mới sắp về" -> `filter_type="coming_soon"`
+   - Hỏi "Hết hàng", "Hết món" -> `filter_type="out_of_stock"`
+   - Hỏi "Đang bán", "Có những món nào ăn được", "Thực đơn hiện tại" -> `filter_type="available"`
+   - Hỏi "Menu chung", "Xem thực đơn" -> `filter_type="all"`
+   - Hỏi "Nước", "Uống" -> `filter_type="drink"`
+   - Hỏi "Bán chạy", "Hot" -> `filter_type="best_seller"`
+   - Hỏi "Khuyến mãi" -> `filter_type="promo"`
 
-2. *Trả lời khách*:
+2. **Trả lời khách**:
    - Dựa vào kết quả trả về để liệt kê.
    - Nếu danh sách trống, hãy báo lịch sự (VD: "Dạ hiện chưa có món nào sắp ra mắt ạ").
 
-3. *Đặt món & Kiểm tra đơn*:
-   - Quy trình giữ nguyên: Gọi place_order_intent -> Hỏi xác nhận -> Chốt đơn.
+3. **Đặt món & Kiểm tra đơn**:
+   - Quy trình giữ nguyên: Gọi `place_order_intent` -> Hỏi xác nhận -> Chốt đơn.
 """
 
 @app.route("/")
@@ -310,5 +310,5 @@ def manual_fallback_logic(msg, tid):
 
     return "👨‍🍳 Bạn cần giúp gì ạ? (Menu, Sắp ra mắt, Hết hàng, Gọi món...)"
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

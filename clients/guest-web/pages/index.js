@@ -288,7 +288,6 @@ export default function GuestMenu() {
      
       {/* 🔹 Các Modal */}
       {selectedItem && <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} />}
-      cd clie
 {showHistory && (
   <OrderHistory
     tenantId={tenantId}
@@ -338,6 +337,3 @@ export default function GuestMenu() {
     </div>
   );
 }
-
-
-
