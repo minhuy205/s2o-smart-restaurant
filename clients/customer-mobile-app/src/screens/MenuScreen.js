@@ -15,7 +15,7 @@ export default function MenuScreen({ route, navigation }) {
   const finalTenantId = tenantId || tenant?.id;
 
   const [displayTableName, setDisplayTableName] = useState(
-    isViewOnly ? 'Khách xem menu' : (paramTableName || (tableId ? Bàn ... : 'Mang về'))
+    isViewOnly ? 'Khách xem menu' : (paramTableName || (tableId ? `Bàn ...` : 'Mang về'))
   );
   
   const [tenantName, setTenantName] = useState(tenant?.name || "Nhà hàng S2O");
@@ -60,7 +60,7 @@ export default function MenuScreen({ route, navigation }) {
 
   const loadMenu = async () => {
     try {
-      const data = await fetchAPI(SERVICES.MENU, /api/menu?tenantId=${finalTenantId});
+      const data = await fetchAPI(SERVICES.MENU, `/api/menu?tenantId=${finalTenantId}`);
       if (Array.isArray(data)) {
         setMenuItems(data);
         const uniqueCats = ['Tất cả', ...new Set(data.map(i => i.category).filter(Boolean))];
@@ -73,11 +73,11 @@ export default function MenuScreen({ route, navigation }) {
       if (paramTableName) return;
       if (!tableId) return;
       try {
-          const tables = await fetchAPI(SERVICES.MENU, /api/tables?tenantId=${finalTenantId});
+          const tables = await fetchAPI(SERVICES.MENU, `/api/tables?tenantId=${finalTenantId}`);
           if (Array.isArray(tables)) {
               const foundTable = tables.find(t => t.id === Number(tableId));
               if (foundTable) setDisplayTableName(foundTable.name); 
-              else setDisplayTableName(Bàn #${tableId}); 
+              else setDisplayTableName(`Bàn #${tableId}`); 
           }
       } catch (error) {}
   };
