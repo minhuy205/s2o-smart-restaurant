@@ -208,13 +208,6 @@ export default function MenuScreen({ route, navigation }) {
           isViewOnly={isViewOnly}
       />
 
-      {/* Nút Gọi Nhân Viên (Chỉ hiện khi đã quét QR - không phải ViewOnly) */}
-      {!isViewOnly && (
-        <TouchableOpacity style={styles.fabCallStaff} onPress={handleCallStaff} disabled={isCallingStaff}>
-          {isCallingStaff ? <ActivityIndicator color="#fff" /> : <Ionicons name="notifications" size={28} color="white" />}
-        </TouchableOpacity>
-      )}
-
       {!isViewOnly && (
         <Modal visible={isCartVisible} animationType="slide" transparent={true}>
             <View style={styles.modalOverlay}>
