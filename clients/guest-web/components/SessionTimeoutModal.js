@@ -2,6 +2,7 @@ import React from 'react';
 
 const SessionTimeoutModal = ({ onReload }) => {
     return (
+<<<<<<< Updated upstream
         <>
             <div className="timeout-modal-overlay">
                 <div className="timeout-modal-content">
@@ -116,6 +117,49 @@ const SessionTimeoutModal = ({ onReload }) => {
                 }
             `}</style>
         </>
+=======
+        <div className="modal-overlay" style={{ zIndex: 10000 }}>
+            <div className="modal-content" style={{ 
+                width: '90%', 
+                maxWidth: '400px', 
+                padding: '30px 20px', 
+                textAlign: 'center',
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '15px'
+            }}>
+                {/* Icon đồng hồ hoặc cảnh báo */}
+                <div style={{ fontSize: '40px' }}>⏳</div>
+                
+                <h3 style={{ margin: 0, color: '#333' }}>Phiên làm việc hết hạn</h3>
+                
+                <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.5' }}>
+                    Bạn đã không thao tác trong một khoảng thời gian dài. <br/>
+                    Vui lòng tải lại trang để tiếp tục đặt món nhé!
+                </p>
+
+                <button 
+                    onClick={onReload}
+                    style={{
+                        backgroundColor: '#FF5722', // Màu cam chủ đạo
+                        color: 'white',
+                        border: 'none',
+                        padding: '12px 30px',
+                        borderRadius: '25px',
+                        fontWeight: 'bold',
+                        fontSize: '16px',
+                        cursor: 'pointer',
+                        marginTop: '10px',
+                        width: '100%'
+                    }}
+                >
+                    Đồng ý & Tải lại
+                </button>
+            </div>
+        </div>
+>>>>>>> Stashed changes
     );
 };
 

@@ -1,36 +1,35 @@
 import { Platform } from 'react-native';
 
+// ======================================================================
+// 👇 1. ĐIỀN IP MÁY TÍNH CỦA BẠN VÀO ĐÂY (Thay cho 192.168.1.12)
+// ======================================================================
+const SERVER_IP = '192.168.1.12'; 
 
-// ======================================================================
-// 👇 1. BƯỚC QUAN TRỌNG NHẤT: ĐIỀN IP MÁY TÍNH CỦA BẠN VÀO ĐÂY
-// (Xem bằng lệnh ipconfig như hướng dẫn ở trên)
-// ======================================================================
-// const SERVER_IP = '172.20.10.9'; // <--- ⚠️ THAY SỐ NÀY BẰNG IP CỦA 
-const SERVER_IP = '192.168.1.12';
 // Logic tự động chọn Host:
-// - Nếu chạy Web: Dùng localhost (cho nhanh)
-// - Nếu chạy App (Máy ảo/Điện thoại thật): Dùng IP LAN
 const HOST = Platform.OS === 'web' ? 'localhost' : SERVER_IP;
 
-
-// 👇 2. CẤU HÌNH PORT (KHỚP VỚI DOCKER-COMPOSE)
+// 👇 2. CẤU HÌNH PORT
 export const SERVICES = {
-    AUTH: `http://${HOST}:7001`,   // Tenant Auth Service
-    MENU: `http://${HOST}:7002`,   // Menu Service
-    ORDER: `http://${HOST}:7003`,  // Order Payment Service
-    GATEWAY: `http://${HOST}:8000` // API Gateway (Nếu dùng)
+    AUTH: `http://${HOST}:7001`,   
+    MENU: `http://${HOST}:7002`,   
+    ORDER: `http://${HOST}:7003`,  
+    RESERVATION: `http://${HOST}:7004`, 
+    GATEWAY: `http://${HOST}:8000` 
 };
 
+<<<<<<< Updated upstream
 export const searchTenants = async (query) => {
     return await fetchAPI(SERVICES.AUTH, `/tenants/search?query=${query}`, {
         method: 'GET',
     });
 };
 // Hàm gọi API chung (Đã tối ưu)
+=======
+// Hàm gọi API chung
+>>>>>>> Stashed changes
 export const fetchAPI = async (serviceUrl, endpoint, options = {}) => {
     const fullUrl = `${serviceUrl}${endpoint}`;
     console.log(`📡 Đang gọi: ${fullUrl}`);
-
 
     try {
         const response = await fetch(fullUrl, {
@@ -41,17 +40,57 @@ export const fetchAPI = async (serviceUrl, endpoint, options = {}) => {
             ...options
         });
 
-
         const data = await response.json();
-       
         if (!response.ok) {
             console.log("❌ Lỗi API:", data);
-            return null; // Hoặc trả về data để xử lý lỗi tùy ý
+            return null; 
         }
         return data;
     } catch (error) {
-        console.error(`❌ Lỗi Mạng (Network Error): ${error.message}`);
-        console.error(`👉 Kiểm tra xem IP ${SERVER_IP} có đúng không? Máy tính có tắt tường lửa chưa?`);
+        console.error(`❌ Lỗi Mạng: ${error.message}`);
         return null;
     }
+};
+
+// --- CÁC HÀM API CHỨC NĂNG ---
+
+// 1. Tìm kiếm nhà hàng
+export const searchRestaurants = async (query) => {
+    return await fetchAPI(SERVICES.AUTH, `/api/tenants?search=${query}`);
+};
+
+// 2. Đặt bàn
+export const createReservation = async (data) => {
+    return await fetchAPI(SERVICES.RESERVATION, '/api/reservations', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+};
+
+// 3. Lấy danh sách đánh giá
+export const getReviews = async (tenantId) => {
+    return await fetchAPI(SERVICES.MENU, `/api/reviews?tenantId=${tenantId}`);
+};
+
+// 4. Tạo đánh giá mới
+export const createReview = async (reviewData) => {
+    return await fetchAPI(SERVICES.MENU, '/api/reviews', {
+        method: 'POST',
+        body: JSON.stringify(reviewData),
+    });
+};
+
+// 5. Chỉnh sửa đánh giá
+export const updateReview = async (reviewId, reviewData) => {
+    return await fetchAPI(SERVICES.MENU, `/api/reviews/${reviewId}`, {
+        method: 'PUT',
+        body: JSON.stringify(reviewData),
+    });
+};
+
+// 6. Xóa đánh giá
+export const deleteReview = async (reviewId) => {
+    return await fetchAPI(SERVICES.MENU, `/api/reviews/${reviewId}`, {
+        method: 'DELETE',
+    });
 };
