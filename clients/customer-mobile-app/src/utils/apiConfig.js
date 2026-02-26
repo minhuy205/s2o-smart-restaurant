@@ -18,12 +18,16 @@ export const SERVICES = {
 };
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 export const searchTenants = async (query) => {
     return await fetchAPI(SERVICES.AUTH, `/tenants/search?query=${query}`, {
         method: 'GET',
     });
 };
 // Hàm gọi API chung (Đã tối ưu)
+=======
+// Hàm gọi API chung
+>>>>>>> Stashed changes
 =======
 // Hàm gọi API chung
 >>>>>>> Stashed changes

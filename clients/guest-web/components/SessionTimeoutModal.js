@@ -3,6 +3,7 @@ import React from 'react';
 const SessionTimeoutModal = ({ onReload }) => {
     return (
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         <>
             <div className="timeout-modal-overlay">
                 <div className="timeout-modal-content">
@@ -118,6 +119,8 @@ const SessionTimeoutModal = ({ onReload }) => {
             `}</style>
         </>
 =======
+=======
+>>>>>>> Stashed changes
         <div className="modal-overlay" style={{ zIndex: 10000 }}>
             <div className="modal-content" style={{ 
                 width: '90%', 
@@ -159,6 +162,9 @@ const SessionTimeoutModal = ({ onReload }) => {
                 </button>
             </div>
         </div>
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     );
 };

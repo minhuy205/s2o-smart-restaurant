@@ -1,10 +1,17 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Image, SafeAreaView, StatusBar, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { fetchAPI, SERVICES } from "../utils/apiConfig";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+=======
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Image, SafeAreaView, StatusBar, TextInput } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { fetchAPI, SERVICES, searchRestaurants } from "../utils/apiConfig";
+>>>>>>> Stashed changes
 =======
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Image, SafeAreaView, StatusBar, TextInput } from "react-native";
@@ -22,6 +29,7 @@ export default function HomeScreen({ route, navigation }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+<<<<<<< Updated upstream
 
 <<<<<<< Updated upstream
   // --- 1. HÀM CẬP NHẬT THÔNG TIN USER VÀ ĐIỂM MỚI NHẤT ---
@@ -56,9 +64,12 @@ export default function HomeScreen({ route, navigation }) {
       refreshUserData();
     }, [])
   );
+=======
+>>>>>>> Stashed changes
 
-  const loadTenants = async () => {
+  const loadTenants = async (query = '') => {
     setLoading(true);
+<<<<<<< Updated upstream
     const data = await fetchAPI(SERVICES.AUTH, "/api/admin/tenants"); // Dùng đúng endpoint admin/tenants hoặc tenants tùy backend
     if (data) { 
         setTenants(data); 
@@ -67,6 +78,8 @@ export default function HomeScreen({ route, navigation }) {
 =======
   const loadTenants = async (query = '') => {
     setLoading(true);
+=======
+>>>>>>> Stashed changes
     let data;
     if (query) {
         // Nếu có từ khóa, gọi hàm tìm kiếm
@@ -85,6 +98,7 @@ export default function HomeScreen({ route, navigation }) {
     if (!initialTenants || initialTenants.length === 0) loadTenants(); 
   }, []);
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
   const handleSearch = (text) => {
     setSearchQuery(text);
@@ -110,11 +124,16 @@ export default function HomeScreen({ route, navigation }) {
   const memberInfo = getMembershipInfo(currentUser.points);
 
 =======
+=======
+>>>>>>> Stashed changes
   // Xử lý khi bấm nút tìm kiếm
   const handleSearch = () => {
       loadTenants(searchTerm);
   };
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   return (
     <SafeAreaView style={styles.container}>
@@ -141,6 +160,7 @@ export default function HomeScreen({ route, navigation }) {
         </View>
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         <View style={styles.searchBox}>
             <Ionicons name="search-outline" size={20} color="#999" />
             <TextInput 
@@ -151,6 +171,8 @@ export default function HomeScreen({ route, navigation }) {
             />
         </View>
 =======
+=======
+>>>>>>> Stashed changes
         {/* --- SEARCH BAR --- */}
         <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#666" style={{marginRight: 8}} />
@@ -170,6 +192,9 @@ export default function HomeScreen({ route, navigation }) {
         </View>
 
         <Text style={styles.sectionTitle}>Danh sách Nhà Hàng ({tenants.length})</Text>
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
         <FlatList
@@ -198,13 +223,19 @@ export default function HomeScreen({ route, navigation }) {
                 <Text style={styles.restaurantAddress}>📍 {item.address || "Đang cập nhật"}</Text>
                 {/* Visual cue for the user */}
                 <Text style={styles.viewOnlyText}>⭐ Đặt bàn & Đánh giá</Text>
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
               </View>
               <Ionicons name="chevron-forward" size={24} color="#FF5E57" />
             </TouchableOpacity>
           )}
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
           ListEmptyComponent={<Text style={{ textAlign: "center", marginTop: 20, color: "gray" }}>{loading ? "Đang tải dữ liệu..." : "Không tìm thấy nhà hàng nào."}</Text>}
           contentContainerStyle={{ paddingBottom: 100 }}
 >>>>>>> Stashed changes
@@ -221,6 +252,7 @@ export default function HomeScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F5F5F5" },
   contentContainer: { flex: 1, padding: 20 },
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15, alignItems: 'center' },
   greeting: { fontSize: 18, fontWeight: "bold", color: "#333" },
@@ -239,6 +271,8 @@ const styles = StyleSheet.create({
   fab: { position: "absolute", bottom: 30, alignSelf: 'center', backgroundColor: "#FF5E57", flexDirection: "row", paddingVertical: 12, paddingHorizontal: 25, borderRadius: 25, elevation: 5, alignItems: 'center' },
   fabText: { color: "#fff", fontWeight: "bold", marginLeft: 8 }
 =======
+=======
+>>>>>>> Stashed changes
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15, marginTop: 10 },
   greeting: { fontSize: 20, fontWeight: "bold", color: "#333", maxWidth: 200 },
   subGreeting: { fontSize: 14, color: "gray", marginTop: 2 },
